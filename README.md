@@ -3,7 +3,8 @@
 > *Screen recorder from Temu*
 
 [![#vibecoding](https://img.shields.io/badge/-%23vibecoding-blueviolet)](https://github.com/topics/vibecoding)
-[![Next.js](https://img.shields.io/badge/Next.js-15.3.0-black)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black)](https://nextjs.org/)
+[![Bun](https://img.shields.io/badge/Bun-1.2.11-black)](https://bun.sh/)
 
 
 ## What is this?
@@ -22,9 +23,9 @@ ScreenClip is a simple screen recording app built to avoid paying for expensive 
 git clone https://github.com/your-username/screeclip.git
 
 # Install dependencies (and hopes and dreams)
-npm install
+bun install
 
 # Run the app
-npm run dev
+bun run dev
 ```
 

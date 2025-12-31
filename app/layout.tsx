@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ScreenClip - Simple Screen Recording",
-  description: "A minimalist screen recording platform",
+  title: "ScreenClip — Screen Recording",
+  description: "Minimal screen recording for everyone",
 };
 
 export default function RootLayout({
@@ -25,10 +25,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0a0a] text-neutral-100`}
       >
+        <div className="noise-overlay" aria-hidden="true" />
         {children}
         <Toaster />
         <Analytics />
