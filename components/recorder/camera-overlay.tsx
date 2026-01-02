@@ -25,10 +25,17 @@ const SIZE_PRESETS: CameraSize[] = ['small', 'medium', 'large'];
 
 /**
  * Delay in milliseconds before hiding camera controls after mouse/touch leaves.
+ *
+ * **Configurability**: Modify this constant to adjust the hide delay timing.
+ * - Lower values (e.g., 150ms) provide quicker UI response but may be harder to reach buttons
+ * - Higher values (e.g., 500ms) give more time to reach buttons but may feel sluggish
+ * - Default 300ms balances accessibility and responsiveness
+ *
  * Adjust this value to accommodate different user speeds and accessibility needs.
  *
  * @default 300
  * @see FR-003 in specs/001-fix-camera-controls/spec.md
+ * @see T001, T005 in specs/001-fix-camera-controls/tasks.md
  */
 export const CAMERA_CONTROLS_HIDE_DELAY_MS = 300;
 
@@ -181,7 +188,13 @@ export function CameraOverlay({
     onSettingsChange({ shape });
   };
 
-  // T017: Touch device toggle handler
+  /**
+   * Toggle camera controls visibility for touch devices.
+   * Shows controls on first tap, hides on second tap.
+   * Only active when not recording.
+   *
+   * @see T017, T018 in specs/001-fix-camera-controls/tasks.md
+   */
   const handleTouchToggle = () => {
     setControlsVisible(prev => !prev);
   };
