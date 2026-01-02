@@ -24,6 +24,21 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'lucide-react',
+      'sonner',
+      'clsx',
+      'tailwind-merge',
+      'class-variance-authority',
+    ],
+    exclude: [
+      '@ffmpeg/ffmpeg',
+      '@ffmpeg/util',
+    ],
+  },
   server: {
     port: 3000,
   },
