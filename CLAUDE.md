@@ -207,3 +207,10 @@ When testing recording features:
 - Use manual testing for MediaRecorder, getDisplayMedia, getUserMedia
 - FFmpeg operations can be tested with mock blobs
 - Timeline operations are pure functions and unit-testable
+
+## Active Technologies
+- TypeScript (strict mode), React 18+, Next.js + React hooks (useState, useEffect, useCallback, useRef), Lucide React icons, Shadcn UI (001-fix-camera-controls)
+- N/A (client-side UI state only) (001-fix-camera-controls)
+
+## Recent Changes
+- 001-fix-camera-controls: Added TypeScript (strict mode), React 18+, Next.js + React hooks (useState, useEffect, useCallback, useRef), Lucide React icons, Shadcn UI

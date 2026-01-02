@@ -23,6 +23,15 @@ const POSITION_PRESETS: CameraPosition[] = [
 
 const SIZE_PRESETS: CameraSize[] = ['small', 'medium', 'large'];
 
+/**
+ * Delay in milliseconds before hiding camera controls after mouse/touch leaves.
+ * Adjust this value to accommodate different user speeds and accessibility needs.
+ *
+ * @default 300
+ * @see FR-003 in specs/001-fix-camera-controls/spec.md
+ */
+export const CAMERA_CONTROLS_HIDE_DELAY_MS = 300;
+
 export function CameraOverlay({
   stream,
   settings,
@@ -33,7 +42,9 @@ export function CameraOverlay({
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [showControls, setShowControls] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const positionRef = useRef({ x: 0, y: 0 });
 
@@ -45,6 +56,31 @@ export function CameraOverlay({
       });
     }
   }, [stream]);
+
+  // T003: Touch device detection with cleanup
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(pointer: coarse)');
+    setIsTouchDevice(mediaQuery.matches);
+
+    const handler = (e: MediaQueryListEvent) => setIsTouchDevice(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  // T005: Implement 300ms delay on controlsVisible (hide only)
+  useEffect(() => {
+    if (isHovering) {
+      // Show immediately when hovering
+      setControlsVisible(true);
+    } else {
+      // Hide after delay when not hovering
+      const timeout = setTimeout(() => {
+        setControlsVisible(false);
+      }, CAMERA_CONTROLS_HIDE_DELAY_MS);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isHovering]);
 
   const getPositionStyles = useCallback(() => {
     if (settings.customPosition) {
@@ -145,6 +181,11 @@ export function CameraOverlay({
     onSettingsChange({ shape });
   };
 
+  // T017: Touch device toggle handler
+  const handleTouchToggle = () => {
+    setControlsVisible(prev => !prev);
+  };
+
   if (!stream) return null;
 
   const positionStyles = getPositionStyles();
@@ -161,8 +202,9 @@ export function CameraOverlay({
         transition: isDragging ? 'none' : 'all 0.2s ease-out',
       }}
       onMouseDown={handleMouseDown}
-      onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => !isDragging && setShowControls(false)}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => !isDragging && setIsHovering(false)}
+      onClick={isTouchDevice && !isRecording ? handleTouchToggle : undefined}
     >
       <div
         className={`w-full h-full overflow-hidden border-2 border-white/20 shadow-lg ${
@@ -186,8 +228,12 @@ export function CameraOverlay({
       </div>
 
       {/* Controls panel - only show when not recording */}
-      {showControls && !isRecording && (
-        <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 bg-neutral-900/95 border border-neutral-700 rounded-lg p-2 flex items-center gap-2 shadow-xl backdrop-blur-sm">
+      {controlsVisible && !isRecording && (
+        <div
+          className="absolute -bottom-12 left-1/2 -translate-x-1/2 z-[60] bg-neutral-900/95 border border-neutral-700 rounded-lg p-2 flex items-center gap-2 shadow-xl backdrop-blur-sm"
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+        >
           {/* Position presets */}
           <div className="flex gap-1">
             {POSITION_PRESETS.slice(0, 4).map((pos) => (
