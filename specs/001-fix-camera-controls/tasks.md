@@ -149,9 +149,9 @@ description: "Task breakdown for camera controls accessibility fix"
 
 - [x] T020 [P] Add JSDoc comments to new event handlers in components/recorder/camera-overlay.tsx
 - [x] T021 [P] Add JSDoc comment to CAMERA_CONTROLS_HIDE_DELAY_MS explaining configurability in components/recorder/camera-overlay.tsx
-- [ ] T022 Verify timer cleanup on component unmount (useEffect return function) in components/recorder/camera-overlay.tsx
-- [ ] T023 Verify controls don't show during recording (existing isRecording check still works) in components/recorder/camera-overlay.tsx
-- [ ] T024 Code review: Verify TypeScript strict mode compliance (no any, no suppressions) in components/recorder/camera-overlay.tsx
+- [x] T022 Verify timer cleanup on component unmount (useEffect return function) in components/recorder/camera-overlay.tsx
+- [x] T023 Verify controls don't show during recording (existing isRecording check still works) in components/recorder/camera-overlay.tsx
+- [x] T024 Code review: Verify TypeScript strict mode compliance (no any, no suppressions) in components/recorder/camera-overlay.tsx
 - [ ] T025 Final manual testing: Run complete test matrix on Firefox + Chrome (Linux) + touch device
 
 **Final Manual Testing Matrix**:
