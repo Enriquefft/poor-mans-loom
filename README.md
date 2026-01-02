@@ -3,8 +3,9 @@
 > *Screen recorder from Temu*
 
 [![#vibecoding](https://img.shields.io/badge/-%23vibecoding-blueviolet)](https://github.com/topics/vibecoding)
-[![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black)](https://nextjs.org/)
-[![Bun](https://img.shields.io/badge/Bun-1.2.11-black)](https://bun.sh/)
+[![Vite](https://img.shields.io/badge/Vite-6.4.1-646CFF?logo=vite)](https://vitejs.dev/)
+[![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)](https://react.dev/)
+[![Bun](https://img.shields.io/badge/Bun-1.3.5-black?logo=bun)](https://bun.sh/)
 
 
 ## What is this?
