@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    basicSsl(),
     {
       name: 'configure-response-headers',
       configureServer: (server) => {
@@ -23,7 +25,6 @@ export default defineConfig({
     },
   },
   server: {
-    https: {} as any, // Enable HTTPS with self-signed certificate
     port: 3000,
   },
   build: {
