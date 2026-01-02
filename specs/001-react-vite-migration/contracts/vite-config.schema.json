@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vite Configuration Contract",
+  "description": "Schema for vite.config.ts configuration file",
+  "type": "object",
+  "required": ["plugins", "resolve", "server"],
+  "properties": {
+    "plugins": {
+      "type": "array",
+      "description": "Array of Vite plugins",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Plugin name"
+          }
+        }
+      }
+    },
+    "resolve": {
+      "type": "object",
+      "required": ["alias"],
+      "properties": {
+        "alias": {
+          "type": "object",
+          "required": ["@"],
+          "properties": {
+            "@": {
+              "type": "string",
+              "description": "Path alias for src directory",
+              "pattern": "^/.*src$"
+            }
+          }
+        }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["https"],
+      "properties": {
+        "https": {
+          "oneOf": [
+            { "type": "boolean", "const": true },
+            {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "cert": { "type": "string" }
+              }
+            }
+          ],
+          "description": "HTTPS configuration for WebRTC support"
+        },
+        "port": {
+          "type": "number",
+          "description": "Dev server port",
+          "minimum": 1024,
+          "maximum": 65535,
+          "default": 3000
+        }
+      }
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "outDir": {
+          "type": "string",
+          "description": "Build output directory",
+          "default": "dist"
+        },
+        "sourcemap": {
+          "type": "boolean",
+          "description": "Generate source maps",
+          "default": false
+        },
+        "minify": {
+          "type": "string",
+          "enum": ["terser", "esbuild"],
+          "default": "esbuild"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "plugins": [
+        { "name": "vite:react-swc" },
+        { "name": "configure-response-headers" }
+      ],
+      "resolve": {
+        "alias": {
+          "@": "/home/user/project/src"
+        }
+      },
+      "server": {
+        "https": true,
+        "port": 3000
+      },
+      "build": {
+        "outDir": "dist",
+        "sourcemap": false
+      }
+    }
+  ]
+}

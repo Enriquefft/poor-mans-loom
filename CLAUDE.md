@@ -12,14 +12,14 @@ Poor Man's Loom is a browser-based screen recording application that provides re
 # Install dependencies
 bun install
 
-# Run development server with Turbopack
+# Run development server with Vite (HTTPS enabled for WebRTC)
 bun run dev
 
 # Build for production
 bun run build
 
-# Start production server
-bun start
+# Preview production build
+bun run preview
 
 # Run linter
 bun run lint
@@ -29,7 +29,7 @@ bun run lint
 
 ### Application Flow
 
-The app operates in two distinct modes managed by `app/page.tsx`:
+The app operates in two distinct modes managed by `src/App.tsx`:
 
 1. **Recording Mode** (`appState: 'recording'`)
    - User configures camera, audio, and recording settings
@@ -43,7 +43,7 @@ The app operates in two distinct modes managed by `app/page.tsx`:
 
 ### Key Technical Components
 
-#### Recording Pipeline (`lib/recorder/`)
+#### Recording Pipeline (`src/lib/recorder/`)
 
 The recording system composes multiple media streams into a single recording:
 
@@ -75,7 +75,7 @@ The recording system composes multiple media streams into a single recording:
    - Records to Blob chunks with auto-detected MIME type
    - Handles cleanup and error recovery
 
-#### Editing Pipeline (`lib/editor/`)
+#### Editing Pipeline (`src/lib/editor/`)
 
 The editor uses a segment-based approach for efficient video manipulation:
 
@@ -102,16 +102,25 @@ The editor uses a segment-based approach for efficient video manipulation:
 
 ### Important Patterns
 
-#### Cross-Origin Isolation (next.config.ts)
+#### Cross-Origin Isolation (vite.config.ts)
 
 FFmpeg.wasm requires SharedArrayBuffer, which needs COOP/COEP headers:
 
+**Development (vite.config.ts)**:
 ```typescript
-headers: [
-  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-  { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' }
-]
+{
+  name: 'configure-response-headers',
+  configureServer: (server) => {
+    server.middlewares.use((_req, res, next) => {
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
+      res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
+      next()
+    })
+  },
+}
 ```
+
+**Production**: Headers configured in `public/_headers` (Netlify) and `vercel.json` (Vercel).
 
 **When adding external resources**: Ensure they are CORS-enabled or use `crossorigin` attribute.
 
@@ -152,7 +161,7 @@ This pattern is used in `camera.ts` and `audio.ts`.
 - `isPaused`: boolean - Recording paused
 - `stream`: MediaStream | null - Active recording stream
 
-#### Editor State (`lib/types.ts`)
+#### Editor State (`src/lib/types.ts`)
 ```typescript
 EditorState {
   segments: TimelineSegment[]    // Timeline segments
@@ -162,7 +171,7 @@ EditorState {
 }
 ```
 
-#### App State (`app/page.tsx`)
+#### App State (`src/App.tsx`)
 - `appState`: 'recording' | 'editing' - UI mode switcher
 - `recordingData`: {blob, duration} | null - Persistent recording data
 
@@ -186,17 +195,21 @@ EditorState {
 
 ### TypeScript Path Aliases
 
-The project uses `@/*` to reference the root directory:
+The project uses `@/*` to reference the `src/` directory:
 
 ```typescript
 import { Button } from "@/components/ui/button"
 import { EditorState } from "@/lib/types"
 ```
 
+Configuration in both `tsconfig.json` (TypeScript) and `vite.config.ts` (build):
+- `tsconfig.json`: `"@/*": ["./src/*"]`
+- `vite.config.ts`: `alias: { '@': path.resolve(__dirname, './src') }`
+
 ### UI Components
 
 The project uses Shadcn UI (Radix primitives + Tailwind):
-- Components are in `components/ui/`
+- Components are in `src/components/ui/`
 - Can be customized by editing the component files
 - Use `components.json` for Shadcn CLI configuration
 
@@ -209,8 +222,12 @@ When testing recording features:
 - Timeline operations are pure functions and unit-testable
 
 ## Active Technologies
-- TypeScript (strict mode), React 18+, Next.js + React hooks (useState, useEffect, useCallback, useRef), Lucide React icons, Shadcn UI (001-fix-camera-controls)
-- N/A (client-side UI state only) (001-fix-camera-controls)
+- TypeScript 5.x (strict mode) with React 19.2
+- Vite 6.x build tool with @vitejs/plugin-react-swc
+- FFmpeg.wasm 0.12.x for client-side video processing
+- Tailwind CSS 4.x with @tailwindcss/postcss
+- Radix UI components via Shadcn UI
+- Client-side only (browser localStorage for preferences, in-memory for recordings)
 
 ## Recent Changes
-- 001-fix-camera-controls: Added TypeScript (strict mode), React 18+, Next.js + React hooks (useState, useEffect, useCallback, useRef), Lucide React icons, Shadcn UI
+- 001-react-vite-migration: Migrated from Next.js 16 to Vite 6, upgraded React to 19.2, removed Vercel Analytics, configured COOP/COEP headers for FFmpeg.wasm

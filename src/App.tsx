@@ -1,11 +1,10 @@
-"use client";
-
 import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScreenRecorder } from "@/components/recorder/screen-recorder";
 import { VideoEditor } from "@/components/editor/video-editor";
 import { GithubBadge } from "@/components/github-badge";
 import { Logo } from "@/components/logo";
+import { Toaster } from "@/components/ui/sonner";
 import { Heart, Video, Scissors } from "lucide-react";
 
 type AppState = 'recording' | 'editing';
@@ -15,7 +14,7 @@ interface RecordingData {
   duration: number;
 }
 
-export default function Home() {
+export default function App() {
   const [appState, setAppState] = useState<AppState>('recording');
   const [recordingData, setRecordingData] = useState<RecordingData | null>(null);
 
@@ -33,7 +32,11 @@ export default function Home() {
   }, [recordingData]);
 
   return (
-    <div className="min-h-screen flex flex-col relative">
+    <div className="min-h-screen flex flex-col relative bg-[#0a0a0a] text-neutral-100 antialiased" style={{
+      fontFamily: 'var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif)',
+    }}>
+      <div className="noise-overlay" aria-hidden="true" />
+
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-neutral-800/50 bg-[#0a0a0a]/80 backdrop-blur-sm noise-texture noise-texture-subtle">
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
@@ -43,11 +46,11 @@ export default function Home() {
               Poor Man's Loom
             </span>
           </div>
-          
+
           <GithubBadge />
         </div>
       </header>
-      
+
       {/* Main Content */}
       <main className="flex-1 w-full flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-4xl mx-auto">
@@ -69,13 +72,13 @@ export default function Home() {
                     )}
                   </CardTitle>
                   <CardDescription className="font-mono text-xs mt-1">
-                    {appState === 'recording' 
+                    {appState === 'recording'
                       ? 'Capture screen, camera, and audio — all locally'
                       : 'Trim, split, and export your recording'
                     }
                   </CardDescription>
                 </div>
-                
+
                 {/* State indicator */}
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${appState === 'recording' ? 'bg-blue-500' : 'bg-neutral-600'}`} />
@@ -83,7 +86,7 @@ export default function Home() {
                 </div>
               </div>
             </CardHeader>
-            
+
             <CardContent className="space-y-6">
               {appState === 'recording' ? (
                 <ScreenRecorder onRecordingComplete={handleRecordingComplete} />
@@ -98,7 +101,7 @@ export default function Home() {
           </Card>
         </div>
       </main>
-      
+
       {/* Footer */}
       <footer className="w-full border-t border-neutral-800/50 noise-texture noise-texture-subtle">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -107,9 +110,9 @@ export default function Home() {
           </span>
           <span className="text-[10px] font-mono text-neutral-600 flex items-center gap-1">
             made with <Heart className="w-3 h-3 text-red-500 fill-red-500 animate-pulse" /> by{' '}
-            <a 
-              href="https://cris.fast" 
-              target="_blank" 
+            <a
+              href="https://cris.fast"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-neutral-400 hover:text-neutral-200 transition-colors"
             >
@@ -118,6 +121,8 @@ export default function Home() {
           </span>
         </div>
       </footer>
+
+      <Toaster />
     </div>
   );
 }
