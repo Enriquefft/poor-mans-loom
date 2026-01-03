@@ -13,9 +13,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Toaster } from '@/components/ui/sonner';
+import { captionService } from '@/lib/ai/captions';
 import { silenceDetectionService } from '@/lib/ai/silence-detection';
 import { transcriptionService } from '@/lib/ai/transcription';
-import type { SilenceSegment, Transcript } from '@/lib/ai/types';
+import type { Caption, SilenceSegment, Transcript } from '@/lib/ai/types';
 import { isTranscriptionSuccess } from '@/lib/ai/types';
 import { storageService } from '@/lib/storage/persistence';
 
@@ -36,6 +37,7 @@ export default function App() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [silenceSegments, setSilenceSegments] = useState<SilenceSegment[]>([]);
   const [isDetectingSilence, setIsDetectingSilence] = useState(false);
+  const [captions, setCaptions] = useState<Caption[]>([]);
 
   /**
    * T037-T039: Auto-trigger transcription on recording completion
@@ -86,10 +88,23 @@ export default function App() {
           await storageService.saveTranscript(finalTranscript);
           setTranscript(finalTranscript);
 
-          toast.success(
-            `Transcription complete (${finalTranscript.segments.length} segments)`,
-            { id: toastId },
-          );
+          // T125: Auto-generate captions from transcript
+          const captionResult = captionService.generate(finalTranscript);
+          if (captionResult.success) {
+            // Save captions to storage
+            await storageService.saveCaptions(recordingId, captionResult.captions);
+            setCaptions(captionResult.captions);
+
+            toast.success(
+              `Transcription complete (${finalTranscript.segments.length} segments, ${captionResult.captions.length} captions)`,
+              { id: toastId },
+            );
+          } else {
+            toast.success(
+              `Transcription complete (${finalTranscript.segments.length} segments)`,
+              { id: toastId },
+            );
+          }
         } else {
           // T039: Handle NO_SPEECH and other errors
           if (transcriptionResult.type === 'NO_SPEECH') {
@@ -162,16 +177,35 @@ export default function App() {
     setRecordingData(null);
     setTranscript(null);
     setSilenceSegments([]);
+    setCaptions([]);
     setAppState('recording');
   }, [recordingData]);
 
   /**
-   * Handle transcript updates from editor
+   * T126: Handle transcript updates from editor and auto-update captions
    */
-  const handleTranscriptUpdate = useCallback(async (updated: Transcript) => {
-    setTranscript(updated);
-    await storageService.updateTranscript(updated);
-  }, []);
+  const handleTranscriptUpdate = useCallback(
+    async (updated: Transcript) => {
+      setTranscript(updated);
+      await storageService.updateTranscript(updated);
+
+      // T126: Auto-update captions when transcript changes
+      if (captions.length > 0) {
+        const updateResult = captionService.updateFromTranscript(
+          updated,
+          captions,
+        );
+        if (updateResult.success && recordingData) {
+          await storageService.saveCaptions(
+            recordingData.recordingId,
+            updateResult.captions,
+          );
+          setCaptions(updateResult.captions);
+        }
+      }
+    },
+    [captions, recordingData],
+  );
 
   return (
     <div
@@ -250,6 +284,8 @@ export default function App() {
                   silenceSegments={silenceSegments}
                   onSilenceSegmentsChange={setSilenceSegments}
                   isDetectingSilence={isDetectingSilence}
+                  captions={captions}
+                  onCaptionsChange={setCaptions}
                 />
               ) : null}
             </CardContent>
