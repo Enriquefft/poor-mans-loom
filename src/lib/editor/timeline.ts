@@ -1,5 +1,5 @@
 import type { EditorState, TimelineSegment } from '../types';
-import type { SilenceSegment } from './ai/types';
+import type { SilenceSegment } from '../ai/types';
 
 export function createInitialEditorState(duration: number): EditorState {
   return {

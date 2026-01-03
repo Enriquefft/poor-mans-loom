@@ -131,13 +131,6 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
     }
   }, [recordingMode, cameraEnabled, cameraStream]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      cleanup();
-    };
-  }, [cleanup]);
-
   const cleanup = useCallback(() => {
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
@@ -165,6 +158,22 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
 
     setSystemAudioStream(null);
   }, [micStream]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanup();
+    };
+  }, [cleanup]);
+
+  const stopRecording = useCallback(() => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== 'inactive'
+    ) {
+      mediaRecorderRef.current.stop();
+    }
+  }, []);
 
   const startRecording = useCallback(async () => {
     try {
@@ -335,15 +344,6 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
     onRecordingComplete,
     stopRecording,
   ]);
-
-  const stopRecording = useCallback(() => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== 'inactive'
-    ) {
-      mediaRecorderRef.current.stop();
-    }
-  }, []);
 
   const pauseRecording = useCallback(() => {
     if (
