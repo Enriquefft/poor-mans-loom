@@ -76,6 +76,11 @@ export interface EditorState {
 export interface ExportOptions {
   format: 'webm' | 'mp4';
   quality: 'low' | 'medium' | 'high';
+  captions?: {
+    enabled: boolean;
+    burnIn: boolean; // If true, burn captions into video; if false, export as separate file
+    captionIds?: string[]; // Optional: specific captions to include
+  };
 }
 
 export interface ExportProgress {
