@@ -24,12 +24,14 @@ import {
   trimEnd,
   trimStart,
 } from '@/lib/editor/timeline';
+import { generateWaveform, type WaveformData } from '@/lib/editor/waveform';
 import type { EditorState, ExportOptions, ExportProgress } from '@/lib/types';
 import { CaptionEditor } from './caption-editor';
 import { ExportDialog } from './export-dialog';
 import { SilenceMarkers } from './silence-markers';
 import { Timeline } from './timeline';
 import { TranscriptViewer } from './transcript-viewer';
+import { WaveformViz } from './waveform-viz';
 
 interface VideoEditorProps {
   videoBlob: Blob;
@@ -71,6 +73,8 @@ export function VideoEditor({
     null,
   );
   const [showCaptionPreview, setShowCaptionPreview] = useState(false);
+  const [waveformData, setWaveformData] = useState<WaveformData | null>(null);
+  const [isGeneratingWaveform, setIsGeneratingWaveform] = useState(false);
 
   // Calculate these early so they can be used in callbacks
   const activeDuration = getTotalActiveDuration(editorState);
@@ -82,6 +86,24 @@ export function VideoEditor({
     const url = URL.createObjectURL(videoBlob);
     setVideoUrl(url);
     return () => URL.revokeObjectURL(url);
+  }, [videoBlob]);
+
+  // Generate waveform visualization from audio
+  useEffect(() => {
+    const generateWaveformData = async () => {
+      setIsGeneratingWaveform(true);
+      const result = await generateWaveform(videoBlob, 20); // 20 samples per second
+
+      if (result.success) {
+        setWaveformData(result.data);
+      } else {
+        // Silently fail - waveform is optional enhancement
+        console.warn('Waveform generation failed:', result.message);
+      }
+      setIsGeneratingWaveform(false);
+    };
+
+    generateWaveformData();
   }, [videoBlob]);
 
   const handleTrimStart = useCallback((time: number) => {
@@ -264,11 +286,33 @@ export function VideoEditor({
           onTimeUpdate={handleTimeUpdate}
           isPlaying={isPlaying}
           onPlayPause={handlePlayPause}
+          captions={captions}
+          showCaptions={showCaptionPreview}
+          overrideDuration={videoDuration}
         />
       </div>
 
-      {/* Timeline */}
-      <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 noise-texture noise-texture-subtle">
+      {/* Timeline with Waveform */}
+      <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 space-y-3 noise-texture noise-texture-subtle">
+        {/* Waveform Visualization */}
+        {waveformData && (
+          <div className="w-full">
+            <WaveformViz
+              waveformData={waveformData}
+              silenceSegments={silenceSegments}
+              width={800} // Will be responsive based on container
+              height={60}
+            />
+          </div>
+        )}
+        {isGeneratingWaveform && (
+          <div className="w-full h-[60px] flex items-center justify-center bg-neutral-900/30 rounded">
+            <span className="text-xs text-neutral-500">
+              Generating waveform...
+            </span>
+          </div>
+        )}
+
         <Timeline
           editorState={editorState}
           onTrimStart={handleTrimStart}

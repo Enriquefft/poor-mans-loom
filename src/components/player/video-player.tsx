@@ -4,6 +4,8 @@ import { Maximize2, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import type { Caption } from '@/lib/ai/types';
+import { CaptionOverlay } from './caption-overlay';
 
 interface VideoPlayerProps {
   src: string;
@@ -13,6 +15,9 @@ interface VideoPlayerProps {
   isPlaying?: boolean;
   onPlayPause?: (isPlaying: boolean) => void;
   showControls?: boolean;
+  captions?: Caption[];
+  showCaptions?: boolean;
+  overrideDuration?: number; // Override metadata duration (fixes WebM duration bugs)
 }
 
 function formatTime(seconds: number): string {
@@ -29,6 +34,9 @@ export function VideoPlayer({
   isPlaying: externalIsPlaying,
   onPlayPause,
   showControls = true,
+  captions = [],
+  showCaptions = false,
+  overrideDuration,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [internalIsPlaying, setInternalIsPlaying] = useState(false);
@@ -48,8 +56,17 @@ export function VideoPlayer({
     if (!video) return;
 
     const handleLoadedMetadata = () => {
-      setDuration(video.duration);
-      onDurationChange?.(video.duration);
+      // Use override duration if provided (fixes WebM metadata bugs)
+      const actualDuration = overrideDuration ?? video.duration;
+
+      console.log('Video loaded:', {
+        metadataDuration: video.duration,
+        overrideDuration,
+        usingDuration: actualDuration,
+      });
+
+      setDuration(actualDuration);
+      onDurationChange?.(actualDuration);
     };
 
     const handleTimeUpdate = () => {
@@ -72,7 +89,7 @@ export function VideoPlayer({
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [onTimeUpdate, onDurationChange, onPlayPause]);
+  }, [onTimeUpdate, onDurationChange, onPlayPause, overrideDuration]);
 
   // Sync external time with video
   useEffect(() => {
@@ -177,6 +194,13 @@ export function VideoPlayer({
         className="w-full h-full object-contain"
         onClick={togglePlay}
         aria-label="Video playback"
+      />
+
+      {/* Caption overlay */}
+      <CaptionOverlay
+        captions={captions}
+        currentTime={currentTime}
+        visible={showCaptions}
       />
 
       {/* Play button overlay */}
