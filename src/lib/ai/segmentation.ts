@@ -65,70 +65,117 @@ class SegmentationService {
    * T074: Initialize MediaPipe with GPU/CPU delegation
    *
    * Attempts GPU first, falls back to CPU if unavailable
+   * Includes retry logic for CDN failures
    */
   async initialize(): Promise<InitializationResult> {
     if (this.isInitialized) {
       return { gpuEnabled: this.gpuEnabled, success: true };
     }
 
-    try {
-      // Load MediaPipe WASM files
-      const vision = await FilesetResolver.forVisionTasks(
-        AI_MODELS.MEDIAPIPE_SEGMENTATION.wasmPath,
-      );
+    // Retry logic for CDN failures
+    const maxRetries = 1;
+    const retryDelayMs = 2000;
 
-      // Try GPU delegation first
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        this.segmenter = await ImageSegmenter.createFromOptions(vision, {
-          baseOptions: {
-            delegate: 'GPU',
-            modelAssetPath: AI_MODELS.MEDIAPIPE_SEGMENTATION.modelPath,
-          },
-          outputCategoryMask: true,
-          outputConfidenceMasks: false,
-          runningMode: 'VIDEO',
+        // Load MediaPipe WASM files from CDN
+        console.log(
+          `Loading MediaPipe WASM files (attempt ${attempt + 1}/${maxRetries + 1})...`,
+        );
+        const vision = await FilesetResolver.forVisionTasks(
+          AI_MODELS.MEDIAPIPE_SEGMENTATION.wasmPath,
+        );
+
+        // Try GPU delegation first
+        try {
+          this.segmenter = await ImageSegmenter.createFromOptions(vision, {
+            baseOptions: {
+              delegate: 'GPU',
+              modelAssetPath: AI_MODELS.MEDIAPIPE_SEGMENTATION.modelPath,
+            },
+            outputCategoryMask: true,
+            outputConfidenceMasks: false,
+            runningMode: 'VIDEO',
+          });
+          this.gpuEnabled = true;
+          console.log('MediaPipe initialized with GPU acceleration');
+        } catch (gpuError) {
+          // GPU failed, fallback to CPU
+          console.warn(
+            'GPU delegation unavailable, falling back to CPU:',
+            gpuError instanceof Error ? gpuError.message : String(gpuError),
+          );
+          this.segmenter = await ImageSegmenter.createFromOptions(vision, {
+            baseOptions: {
+              delegate: 'CPU',
+              modelAssetPath: AI_MODELS.MEDIAPIPE_SEGMENTATION.modelPath,
+            },
+            outputCategoryMask: true,
+            outputConfidenceMasks: false,
+            runningMode: 'VIDEO',
+          });
+          this.gpuEnabled = false;
+          console.log('MediaPipe initialized with CPU fallback');
+        }
+
+        // Create temporary canvas for processing
+        this.tempCanvas = document.createElement('canvas');
+        this.tempCtx = this.tempCanvas.getContext('2d', {
+          alpha: false,
+          desynchronized: true,
         });
-        this.gpuEnabled = true;
-      } catch (gpuError) {
-        // GPU failed, fallback to CPU
-        console.warn('GPU delegation failed, using CPU:', gpuError);
-        this.segmenter = await ImageSegmenter.createFromOptions(vision, {
-          baseOptions: {
-            delegate: 'CPU',
-            modelAssetPath: AI_MODELS.MEDIAPIPE_SEGMENTATION.modelPath,
-          },
-          outputCategoryMask: true,
-          outputConfidenceMasks: false,
-          runningMode: 'VIDEO',
-        });
-        this.gpuEnabled = false;
+
+        if (!this.tempCtx) {
+          throw new Error('Failed to create canvas context');
+        }
+
+        this.isInitialized = true;
+
+        return {
+          gpuEnabled: this.gpuEnabled,
+          success: true,
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        // Classify error type for better debugging
+        if (errorMessage.includes('fetch') || errorMessage.includes('CDN')) {
+          console.error(
+            `CDN loading error (attempt ${attempt + 1}/${maxRetries + 1}):`,
+            errorMessage,
+          );
+        } else if (errorMessage.includes('WASM')) {
+          console.error('WASM initialization error:', errorMessage);
+        } else {
+          console.error('MediaPipe initialization error:', errorMessage);
+        }
+
+        // Retry on CDN failures only
+        if (
+          attempt < maxRetries &&
+          (errorMessage.includes('fetch') || errorMessage.includes('CDN'))
+        ) {
+          console.log(`Retrying in ${retryDelayMs}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+          continue;
+        }
+
+        // Final failure after retries
+        return {
+          message: ERROR_MESSAGES.MEDIAPIPE_INIT_FAILED,
+          success: false,
+          type: 'MEDIAPIPE_INIT_FAILED',
+        };
       }
-
-      // Create temporary canvas for processing
-      this.tempCanvas = document.createElement('canvas');
-      this.tempCtx = this.tempCanvas.getContext('2d', {
-        alpha: false,
-        desynchronized: true,
-      });
-
-      if (!this.tempCtx) {
-        throw new Error('Failed to create canvas context');
-      }
-
-      this.isInitialized = true;
-
-      return {
-        gpuEnabled: this.gpuEnabled,
-        success: true,
-      };
-    } catch (error) {
-      console.error('MediaPipe initialization failed:', error);
-      return {
-        message: ERROR_MESSAGES.MEDIAPIPE_INIT_FAILED,
-        success: false,
-        type: 'MEDIAPIPE_INIT_FAILED',
-      };
     }
+
+    // Should never reach here, but TypeScript needs it
+    return {
+      message: ERROR_MESSAGES.MEDIAPIPE_INIT_FAILED,
+      success: false,
+      type: 'MEDIAPIPE_INIT_FAILED',
+    };
   }
 
   /**

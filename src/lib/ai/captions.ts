@@ -13,7 +13,12 @@
  */
 
 import { CAPTION_CONFIG } from './config';
-import type { Caption, CaptionPosition, CaptionStyle, Transcript } from './types';
+import type {
+  Caption,
+  CaptionPosition,
+  CaptionStyle,
+  Transcript,
+} from './types';
 
 // ============================================================================
 // Types
@@ -56,7 +61,11 @@ class CaptionService {
     transcript: Transcript,
     options: CaptionGenerationOptions = {},
   ): GenerateResult {
-    if (!transcript || !transcript.segments || transcript.segments.length === 0) {
+    if (
+      !transcript ||
+      !transcript.segments ||
+      transcript.segments.length === 0
+    ) {
       return {
         message: 'Transcript is empty or invalid',
         success: false,
@@ -133,7 +142,11 @@ class CaptionService {
 
     // Split by sentences first
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    const captions: Array<{ text: string; startTime: number; endTime: number }> = [];
+    const captions: Array<{
+      text: string;
+      startTime: number;
+      endTime: number;
+    }> = [];
 
     let currentTime = startTime;
     let currentWords = 0;

@@ -43,14 +43,15 @@ export function ExportDialog({
 
   const handleExport = () => {
     onExport({
+      captions:
+        hasCaptions && captionsEnabled
+          ? {
+              burnIn: captionsBurnIn,
+              enabled: true,
+            }
+          : undefined,
       format,
       quality,
-      captions: hasCaptions && captionsEnabled
-        ? {
-            enabled: true,
-            burnIn: captionsBurnIn,
-          }
-        : undefined,
     });
   };
 

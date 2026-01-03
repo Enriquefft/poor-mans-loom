@@ -1,23 +1,15 @@
 <!--
 Sync Impact Report
 ==================
-Version change: N/A → 1.0.0
-Modified principles: Initial constitution creation
-Added sections: All sections (initial creation)
-  - Principle I: Client-Side First
-  - Principle II: Type Safety First
-  - Principle III: Stream Lifecycle Management
-  - Principle IV: Immutable State Operations
-  - Principle V: Performance-Conscious Design
-  - Principle VI: Type-Safe Error Handling
-  - Architecture Constraints
-  - Development Workflow
-  - Governance
+Version change: 1.0.0 → 1.1.0
+Modified principles: None (existing principles unchanged)
+Added sections:
+  - Principle VII: Root Cause Resolution (new principle for bug fix methodology)
 Removed sections: None
 Templates requiring updates:
-  ✅ .specify/templates/plan-template.md - Reviewed, constitution check section exists
-  ✅ .specify/templates/spec-template.md - Reviewed, requirements align with principles
-  ✅ .specify/templates/tasks-template.md - Reviewed, task categorization supports principle-driven work
+  ✅ .specify/templates/plan-template.md - Reviewed, constitution check section compatible
+  ✅ .specify/templates/spec-template.md - Reviewed, requirements align with all principles including new VII
+  ✅ .specify/templates/tasks-template.md - Reviewed, task categorization supports principle-driven work including robust bug fixes
 Follow-up TODOs: None
 -->
 
@@ -96,6 +88,22 @@ Use type-safe error results instead of throwing exceptions for expected failures
 
 **Rationale**: Browser media APIs have many expected failure modes (permissions denied, device in use, not found). Type-safe errors make these failures explicit and force callers to handle them.
 
+### VII. Root Cause Resolution
+
+When fixing bugs, MUST identify and fix the root cause. Bandaid fixes and temporary workarounds are PROHIBITED.
+
+**Rules**:
+- Trace the bug to its origin - do not fix symptoms
+- If the root cause cannot be fixed immediately, document why and create a tracking issue
+- Temporary fixes MUST include:
+  - Inline comment explaining the root cause
+  - Link to tracking issue for proper fix
+  - Clear TODO with context
+- Prefer refactoring over workarounds
+- Do not patch over type errors, race conditions, or undefined behavior
+
+**Rationale**: Bandaid fixes accumulate technical debt, create fragile code with hidden dependencies, and make future changes risky. Symptoms reappear in different forms when root causes remain unaddressed. Robust fixes prevent entire classes of related bugs.
+
 ## Architecture Constraints
 
 ### Cross-Origin Isolation Requirements
@@ -155,6 +163,7 @@ All changes MUST verify:
 5. Type-safe error handling for media APIs
 6. Cross-origin isolation compatibility for new dependencies
 7. Single source of truth maintained (no duplication)
+8. Bug fixes address root causes, not symptoms (Principle VII)
 
 ### Documentation Requirements
 
@@ -172,7 +181,7 @@ This constitution supersedes all other development practices.
 **Amendment Process**:
 
 1. Proposed changes MUST be documented with rationale
-2. Changes affecting core principles (I-VI) require justification of why existing approach insufficient
+2. Changes affecting core principles (I-VII) require justification of why existing approach insufficient
 3. Version bump according to semantic versioning (see below)
 4. Update dependent templates (plan, spec, tasks) for consistency
 5. Migration plan required for breaking changes
@@ -190,4 +199,4 @@ This constitution supersedes all other development practices.
 - Use CLAUDE.md for runtime development guidance (implementation details)
 - Use Constitution for governance and non-negotiable principles
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02
+**Version**: 1.1.0 | **Ratified**: 2026-01-02 | **Last Amended**: 2026-01-02

@@ -132,11 +132,27 @@ function getCaptionForceStyle(caption: Caption): string {
   // Alignment (1-9 grid: 1=bottom-left, 2=bottom-center, 5=center, etc.)
   let alignment = 2; // default bottom-center
   if (caption.position.vertical === 'bottom') {
-    alignment = caption.position.horizontal === 'left' ? 1 : caption.position.horizontal === 'right' ? 3 : 2;
+    alignment =
+      caption.position.horizontal === 'left'
+        ? 1
+        : caption.position.horizontal === 'right'
+          ? 3
+          : 2;
   } else if (caption.position.vertical === 'middle') {
-    alignment = caption.position.horizontal === 'left' ? 4 : caption.position.horizontal === 'right' ? 6 : 5;
-  } else { // top
-    alignment = caption.position.horizontal === 'left' ? 7 : caption.position.horizontal === 'right' ? 9 : 8;
+    alignment =
+      caption.position.horizontal === 'left'
+        ? 4
+        : caption.position.horizontal === 'right'
+          ? 6
+          : 5;
+  } else {
+    // top
+    alignment =
+      caption.position.horizontal === 'left'
+        ? 7
+        : caption.position.horizontal === 'right'
+          ? 9
+          : 8;
   }
   styles.push(`Alignment=${alignment}`);
 
@@ -150,7 +166,10 @@ function hexToASSColor(hex: string): string {
   // Remove # and parse
   const clean = hex.replace('#', '');
 
-  let r: string, g: string, b: string, a = 'FF';
+  let r: string,
+    g: string,
+    b: string,
+    a = 'FF';
 
   if (clean.length === 8) {
     // RRGGBBAA format
@@ -166,7 +185,7 @@ function hexToASSColor(hex: string): string {
   }
 
   // ASS format is &HAABBGGRR (note: alpha is inverted)
-  const alpha = (255 - parseInt(a, 16)).toString(16).padStart(2, '0');
+  const alpha = (255 - Number.parseInt(a, 16)).toString(16).padStart(2, '0');
   return `&H${alpha.toUpperCase()}${b.toUpperCase()}${g.toUpperCase()}${r.toUpperCase()}`;
 }
 
@@ -206,7 +225,12 @@ export async function exportVideo(
 
   // T111: Prepare caption file if captions enabled
   let captionFilename: string | null = null;
-  if (options.captions?.enabled && options.captions.burnIn && captions && captions.length > 0) {
+  if (
+    options.captions?.enabled &&
+    options.captions.burnIn &&
+    captions &&
+    captions.length > 0
+  ) {
     captionFilename = await prepareCaptionFile(ffmpeg, captions);
   }
 

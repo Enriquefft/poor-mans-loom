@@ -96,9 +96,8 @@ export function BackgroundControls({
           const base64Data = event.target?.result as string;
 
           // Load into segmentation service
-          const success = await segmentationService.loadReplacementImage(
-            base64Data,
-          );
+          const success =
+            await segmentationService.loadReplacementImage(base64Data);
 
           if (success) {
             onEffectChange({
@@ -129,7 +128,8 @@ export function BackgroundControls({
   );
 
   // T093: Performance warning if GPU unavailable
-  const showGPUWarning = segmentationService.isReady() && !segmentationService.isGPUEnabled();
+  const showGPUWarning =
+    segmentationService.isReady() && !segmentationService.isGPUEnabled();
 
   return (
     <div className="space-y-4">
@@ -278,7 +278,10 @@ export function BackgroundControls({
                       variant="ghost"
                       size="sm"
                       onClick={() =>
-                        onEffectChange({ ...effect, replacementImage: undefined })
+                        onEffectChange({
+                          ...effect,
+                          replacementImage: undefined,
+                        })
                       }
                       disabled={disabled}
                     >

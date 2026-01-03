@@ -47,9 +47,9 @@ const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
 };
 
 const DEFAULT_BACKGROUND_EFFECT: BackgroundEffect = {
+  blurIntensity: 50,
   enabled: false,
   type: 'blur',
-  blurIntensity: 50,
 };
 
 export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
@@ -102,6 +102,21 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
   const chunksRef = useRef<BlobPart[]>([]);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Preview state
+  const previewCompositorRef = useRef<Awaited<
+    ReturnType<typeof createCompositor>
+  > | null>(null);
+  const previewCanvasContainerRef = useRef<HTMLDivElement>(null);
+  const [previewState, setPreviewState] = useState<{
+    active: boolean;
+    error: string | null;
+    loading: boolean;
+  }>({
+    active: false,
+    error: null,
+    loading: false,
+  });
+
   // Initialize camera stream (mode-aware)
   useEffect(() => {
     if (recordingMode === 'screen+camera') {
@@ -131,6 +146,77 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
     }
   }, [recordingMode, cameraEnabled, cameraStream]);
 
+  // Preview initialization effect
+  useEffect(() => {
+    // Skip if already recording
+    if (recordingState.isRecording) return;
+
+    // Only show preview for camera-only mode
+    // screen+camera mode shows CameraOverlay instead (can't preview screen without permission)
+    const canPreview = recordingMode === 'camera-only' && cameraStream;
+
+    if (!canPreview) {
+      // Clean up existing preview if conditions no longer met
+      if (previewCompositorRef.current) {
+        previewCompositorRef.current.cleanup();
+        previewCompositorRef.current = null;
+      }
+      setPreviewState({ active: false, error: null, loading: false });
+      return;
+    }
+
+    // Create preview compositor (camera-only mode only)
+    const initPreview = async () => {
+      if (!previewCanvasContainerRef.current) return;
+
+      setPreviewState({ active: false, error: null, loading: true });
+
+      try {
+        const compositor = await createCompositor({
+          backgroundEffect,
+          cameraOnlyDimensions,
+          cameraSettings,
+          cameraStream,
+          isPreview: true,
+          mode: 'camera-only',
+          screenStream: null,
+          targetElement: previewCanvasContainerRef.current,
+        });
+
+        previewCompositorRef.current = compositor;
+        setPreviewState({ active: true, error: null, loading: false });
+      } catch (error) {
+        console.error('Preview initialization failed:', error);
+        setPreviewState({
+          active: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to initialize preview',
+          loading: false,
+        });
+      }
+    };
+
+    initPreview();
+
+    // Cleanup on unmount or dependency change
+    return () => {
+      if (previewCompositorRef.current) {
+        previewCompositorRef.current.cleanup();
+        previewCompositorRef.current = null;
+      }
+    };
+  }, [
+    recordingMode,
+    cameraStream,
+    cameraOnlyDimensions,
+    backgroundEffect,
+    cameraSettings,
+    cameraEnabled,
+    recordingState.isRecording,
+  ]);
+
   const cleanup = useCallback(() => {
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
@@ -146,6 +232,10 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
 
     compositorRef.current?.cleanup();
     compositorRef.current = null;
+
+    // Clean up preview compositor
+    previewCompositorRef.current?.cleanup();
+    previewCompositorRef.current = null;
 
     audioMixerRef.current?.cleanup();
     audioMixerRef.current = null;
@@ -243,6 +333,14 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
       const audioMixer = createAudioMixer(mic, systemAudio);
       audioMixerRef.current = audioMixer;
 
+      // ===== STOP PREVIEW COMPOSITOR =====
+      // Stop preview before starting recording compositor
+      if (previewCompositorRef.current) {
+        previewCompositorRef.current.cleanup();
+        previewCompositorRef.current = null;
+        setPreviewState({ active: false, error: null, loading: false });
+      }
+
       // ===== COMPOSITOR =====
       let compositor;
       try {
@@ -252,6 +350,7 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
             recordingMode === 'camera-only' ? cameraOnlyDimensions : undefined,
           cameraSettings,
           cameraStream: cameraForRecording,
+          isPreview: false, // Recording mode - keep off-DOM
           mode: recordingMode,
           screenStream: screenResult?.stream || null,
         });
@@ -393,43 +492,101 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
         ref={containerRef}
         className="relative w-full aspect-video bg-neutral-950 border border-neutral-800 overflow-hidden flex items-center justify-center noise-texture noise-texture-subtle"
       >
-        {recordingState.isRecording ? (
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-3 h-3 rounded-full ${recordingState.isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`}
-              />
-              <span className="text-neutral-300 font-mono text-lg">
-                Recording{recordingState.isPaused ? ' — Paused' : ''}
-              </span>
+        {/* Preview canvas container */}
+        <div
+          ref={previewCanvasContainerRef}
+          className={`absolute inset-0 ${previewState.active ? 'block' : 'hidden'}`}
+        />
+
+        {/* Recording indicator overlay */}
+        {recordingState.isRecording && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="flex flex-col items-center gap-3 bg-black/50 backdrop-blur-sm px-6 py-4 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-3 h-3 rounded-full ${recordingState.isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`}
+                />
+                <span className="text-neutral-300 font-mono text-lg">
+                  Recording{recordingState.isPaused ? ' — Paused' : ''}
+                </span>
+              </div>
+              <p className="text-neutral-500 font-mono text-xs">
+                Your screen is being captured
+              </p>
             </div>
-            <p className="text-neutral-500 font-mono text-xs">
-              Your screen is being captured
-            </p>
-          </div>
-        ) : (
-          <div className="text-center">
-            <p className="text-neutral-500 font-mono text-sm">
-              Click Record to start capturing
-            </p>
-            <p className="text-neutral-600 font-mono text-xs mt-1">
-              Screen + {audioSettings.microphoneEnabled ? 'Mic' : ''}{' '}
-              {audioSettings.systemAudioEnabled ? '+ System Audio' : ''}
-            </p>
           </div>
         )}
 
-        {/* Camera overlay */}
-        {cameraEnabled && cameraStream && (
-          <CameraOverlay
-            stream={cameraStream}
-            settings={cameraSettings}
-            onSettingsChange={handleCameraSettingsChange}
-            containerRef={containerRef}
-            isRecording={recordingState.isRecording}
-            mode={recordingMode}
-          />
+        {/* Status messages when not recording and no preview */}
+        {!recordingState.isRecording && !previewState.active && (
+          <div className="text-center">
+            {previewState.loading ? (
+              <>
+                <p className="text-neutral-400 font-mono text-sm">
+                  Loading camera...
+                </p>
+                <div className="mt-2 w-6 h-6 border-2 border-neutral-600 border-t-neutral-400 rounded-full animate-spin mx-auto" />
+              </>
+            ) : previewState.error ? (
+              <>
+                <p className="text-red-400 font-mono text-sm">
+                  Preview unavailable
+                </p>
+                <p className="text-neutral-600 font-mono text-xs mt-1">
+                  {previewState.error}
+                </p>
+                <p className="text-neutral-500 font-mono text-xs mt-2">
+                  Recording will still work
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-neutral-500 font-mono text-sm">
+                  Click Record to start capturing
+                </p>
+                <p className="text-neutral-600 font-mono text-xs mt-1">
+                  {recordingMode === 'screen-only'
+                    ? 'Your screen'
+                    : recordingMode === 'camera-only'
+                      ? 'Camera only'
+                      : 'Screen + Camera'}{' '}
+                  {audioSettings.microphoneEnabled && '+ Mic'}{' '}
+                  {audioSettings.systemAudioEnabled && '+ System Audio'}
+                </p>
+              </>
+            )}
+          </div>
         )}
+
+        {/* Camera overlay - show in screen+camera mode (both preview and recording) */}
+        {cameraEnabled &&
+          cameraStream &&
+          recordingMode === 'screen+camera' &&
+          !recordingState.isRecording && (
+            <CameraOverlay
+              stream={cameraStream}
+              settings={cameraSettings}
+              onSettingsChange={handleCameraSettingsChange}
+              containerRef={containerRef}
+              isRecording={false}
+              mode={recordingMode}
+            />
+          )}
+
+        {/* Camera overlay during recording */}
+        {cameraEnabled &&
+          cameraStream &&
+          recordingMode === 'screen+camera' &&
+          recordingState.isRecording && (
+            <CameraOverlay
+              stream={cameraStream}
+              settings={cameraSettings}
+              onSettingsChange={handleCameraSettingsChange}
+              containerRef={containerRef}
+              isRecording={true}
+              mode={recordingMode}
+            />
+          )}
       </div>
 
       {/* Controls */}

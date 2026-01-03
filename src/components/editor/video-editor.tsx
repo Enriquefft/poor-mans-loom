@@ -172,9 +172,13 @@ export function VideoEditor({
         downloadBlob(outputBlob, filename);
 
         // T121: Export separate caption file if requested
-        if (options.captions?.enabled && !options.captions.burnIn && captions.length > 0) {
+        if (
+          options.captions?.enabled &&
+          !options.captions.burnIn &&
+          captions.length > 0
+        ) {
           downloadCaptionFile(captions, 'srt');
-          toast.success(`Video and captions exported`);
+          toast.success('Video and captions exported');
         } else {
           toast.success(`Video exported as ${filename}`);
         }

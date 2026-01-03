@@ -100,7 +100,7 @@ async function retryWithBackoff<T>(
       }
 
       // Calculate exponential backoff: 1s, 2s, 4s
-      const delay = baseDelay * Math.pow(2, attempt);
+      const delay = baseDelay * 2 ** attempt;
 
       self.postMessage({
         progress: 0,

@@ -6,9 +6,13 @@
       "Bash(bun add:*)",
       "Bash(bun run lint)",
       "Bash(git commit:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(bun run build)",
+      "Bash(bunx vitest run:*)",
+      "Bash(cat:*)",
+      "Bash(bun run dev)"
     ],
-    "deny": [],
-    "ask": []
+    "ask": [],
+    "deny": []
   }
 }

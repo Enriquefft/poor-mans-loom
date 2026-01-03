@@ -14,6 +14,8 @@ export interface CompositorConfig {
   cameraOnlyDimensions?: CanvasDimension;
   cameraSettings?: CameraSettings;
   backgroundEffect?: BackgroundEffect; // T081: Background effect support
+  isPreview?: boolean; // Preview mode flag: attach canvas/videos to DOM
+  targetElement?: HTMLElement; // DOM container for preview canvas
 }
 
 export interface CompositorResult {
@@ -85,17 +87,37 @@ function getCameraDimensions(
 
 function waitForVideoReady(video: HTMLVideoElement): Promise<void> {
   return new Promise((resolve, reject) => {
+    // For MediaStream videos, readyState should be ready almost immediately
     if (video.readyState >= 2) {
       resolve();
       return;
     }
 
+    // Try calling load() to kickstart the loading process
+    try {
+      video.load();
+    } catch (e) {
+      // load() might fail for MediaStream, ignore
+    }
+
     const timeout = setTimeout(() => {
       cleanup();
+      console.error(
+        'Video loading timeout. ReadyState:',
+        video.readyState,
+        'NetworkState:',
+        video.networkState,
+      );
       reject(new Error('Video loading timeout'));
-    }, 10000);
+    }, 5000); // Reduced from 10s - videos load faster when visible
 
     const onCanPlay = () => {
+      cleanup();
+      resolve();
+    };
+
+    const onLoadedMetadata = () => {
+      // Metadata loaded is good enough for MediaStream videos
       cleanup();
       resolve();
     };
@@ -108,30 +130,51 @@ function waitForVideoReady(video: HTMLVideoElement): Promise<void> {
     const cleanup = () => {
       clearTimeout(timeout);
       video.removeEventListener('canplay', onCanPlay);
+      video.removeEventListener('loadedmetadata', onLoadedMetadata);
       video.removeEventListener('error', onError);
     };
 
     video.addEventListener('canplay', onCanPlay);
+    video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('error', onError);
   });
 }
 
-function createVideoElement(stream: MediaStream): HTMLVideoElement {
+function createVideoElement(
+  stream: MediaStream,
+  isPreview = false,
+  container?: HTMLElement,
+): HTMLVideoElement {
   const video = document.createElement('video');
   video.srcObject = stream;
   video.muted = true;
   video.playsInline = true;
-  video.autoplay = true;
+  // Remove autoplay attribute - we'll call play() explicitly after waiting
+  // This prevents race conditions with browser autoplay policies
 
-  // Attach to DOM (hidden) to prevent browser suspension
-  video.style.position = 'fixed';
-  video.style.top = '-9999px';
-  video.style.left = '-9999px';
-  video.style.width = '1px';
-  video.style.height = '1px';
-  video.style.opacity = '0';
-  video.style.pointerEvents = 'none';
-  document.body.appendChild(video);
+  if (isPreview && container) {
+    // Preview mode: attach to container with hidden styling but in DOM tree
+    // This satisfies browser autoplay policies while remaining invisible
+    video.style.position = 'absolute';
+    video.style.top = '0';
+    video.style.left = '0';
+    video.style.width = '1px';
+    video.style.height = '1px';
+    video.style.opacity = '0';
+    video.style.zIndex = '-1';
+    video.style.pointerEvents = 'none';
+    container.appendChild(video);
+  } else {
+    // Recording mode: keep off-DOM for tab suspension prevention
+    video.style.position = 'fixed';
+    video.style.top = '-9999px';
+    video.style.left = '-9999px';
+    video.style.width = '1px';
+    video.style.height = '1px';
+    video.style.opacity = '0';
+    video.style.pointerEvents = 'none';
+    document.body.appendChild(video);
+  }
 
   return video;
 }
@@ -184,13 +227,38 @@ export async function createCompositor(
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
 
+  // Attach canvas to DOM if in preview mode
+  if (config.isPreview && config.targetElement) {
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.objectFit = 'contain';
+    config.targetElement.appendChild(canvas);
+  }
+
   // Create screen video only if needed
   let screenVideo: HTMLVideoElement | null = null;
   if (config.mode !== 'camera-only' && config.screenStream) {
-    screenVideo = createVideoElement(config.screenStream);
+    screenVideo = createVideoElement(
+      config.screenStream,
+      config.isPreview,
+      config.targetElement,
+    );
     try {
-      await waitForVideoReady(screenVideo);
-      await screenVideo.play();
+      // Try to play immediately - this can help trigger stream loading
+      const playPromise = screenVideo.play();
+
+      // Wait for either video ready or play to complete
+      await Promise.race([
+        waitForVideoReady(screenVideo),
+        playPromise.catch(() => {
+          // Play might fail, that's ok - wait will handle it
+        }),
+      ]);
+
+      // Ensure it's playing
+      if (screenVideo.paused) {
+        await screenVideo.play();
+      }
     } catch (error) {
       console.error('Screen video failed to start:', error);
       removeVideoElement(screenVideo);
@@ -204,10 +272,27 @@ export async function createCompositor(
     (config.mode === 'camera-only' || config.mode === 'screen+camera') &&
     config.cameraStream
   ) {
-    cameraVideo = createVideoElement(config.cameraStream);
+    cameraVideo = createVideoElement(
+      config.cameraStream,
+      config.isPreview,
+      config.targetElement,
+    );
     try {
-      await waitForVideoReady(cameraVideo);
-      await cameraVideo.play();
+      // Try to play immediately - this can help trigger stream loading
+      const playPromise = cameraVideo.play();
+
+      // Wait for either video ready or play to complete
+      await Promise.race([
+        waitForVideoReady(cameraVideo),
+        playPromise.catch(() => {
+          // Play might fail, that's ok - wait will handle it
+        }),
+      ]);
+
+      // Ensure it's playing
+      if (cameraVideo.paused) {
+        await cameraVideo.play();
+      }
     } catch (error) {
       if (config.mode === 'camera-only') {
         // Camera is required for camera-only mode - fail hard
@@ -270,7 +355,9 @@ export async function createCompositor(
 
       // T102: Warn if FPS drops below 25
       if (segmentationEnabled && fps < 25) {
-        console.warn(`Low FPS detected: ${fps} fps (background effects active)`);
+        console.warn(
+          `Low FPS detected: ${fps} fps (background effects active)`,
+        );
       }
     }
 
@@ -455,6 +542,11 @@ export async function createCompositor(
     cancelAnimationFrame(animationFrameId);
     removeVideoElement(screenVideo);
     removeVideoElement(cameraVideo);
+
+    // Remove canvas from DOM if attached (preview mode)
+    if (canvas.parentNode) {
+      canvas.parentNode.removeChild(canvas);
+    }
 
     // T085: Cleanup segmentation resources
     if (segmentationEnabled) {

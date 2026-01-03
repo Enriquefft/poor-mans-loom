@@ -11,11 +11,8 @@
  */
 
 import { useCallback, useState } from 'react';
-import { CAPTION_CONFIG } from '@/lib/ai/config';
-import type { Caption, CaptionPosition, CaptionStyle } from '@/lib/ai/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -23,12 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { Slider } from '@/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CAPTION_CONFIG } from '@/lib/ai/config';
+import type { Caption, CaptionPosition, CaptionStyle } from '@/lib/ai/types';
 
 interface CaptionEditorProps {
   captions: Caption[];
@@ -58,8 +53,10 @@ export function CaptionEditor({
   disabled = false,
 }: CaptionEditorProps) {
   // Get current style from first caption (all captions share same style)
-  const currentStyle: CaptionStyle = captions[0]?.style || CAPTION_CONFIG.DEFAULT_STYLE;
-  const currentPosition: CaptionPosition = captions[0]?.position || CAPTION_CONFIG.DEFAULT_POSITION;
+  const currentStyle: CaptionStyle =
+    captions[0]?.style || CAPTION_CONFIG.DEFAULT_STYLE;
+  const currentPosition: CaptionPosition =
+    captions[0]?.position || CAPTION_CONFIG.DEFAULT_POSITION;
 
   const [activeTab, setActiveTab] = useState<'style' | 'position'>('style');
 
@@ -108,7 +105,8 @@ export function CaptionEditor({
             Caption Settings
           </h3>
           <p className="text-xs text-neutral-500 mt-0.5">
-            {captions.length} caption{captions.length !== 1 ? 's' : ''} • Customize appearance and position
+            {captions.length} caption{captions.length !== 1 ? 's' : ''} •
+            Customize appearance and position
           </p>
         </div>
         <Button
@@ -122,7 +120,10 @@ export function CaptionEditor({
       </div>
 
       {/* Tabs for Style and Position */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'style' | 'position')}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as 'style' | 'position')}
+      >
         <TabsList className="w-full justify-start border-b border-neutral-800 bg-transparent rounded-none p-0">
           <TabsTrigger
             value="style"
@@ -150,12 +151,19 @@ export function CaptionEditor({
               onValueChange={(value) => updateStyle({ fontFamily: value })}
               disabled={disabled}
             >
-              <SelectTrigger id="font-family" className="bg-neutral-950 border-neutral-700">
+              <SelectTrigger
+                id="font-family"
+                className="bg-neutral-950 border-neutral-700"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {FONT_FAMILIES.map((font) => (
-                  <SelectItem key={font} value={font} style={{ fontFamily: font }}>
+                  <SelectItem
+                    key={font}
+                    value={font}
+                    style={{ fontFamily: font }}
+                  >
                     {font}
                   </SelectItem>
                 ))}
@@ -252,7 +260,9 @@ export function CaptionEditor({
               <input
                 type="text"
                 value={currentStyle.backgroundColor}
-                onChange={(e) => updateStyle({ backgroundColor: e.target.value })}
+                onChange={(e) =>
+                  updateStyle({ backgroundColor: e.target.value })
+                }
                 disabled={disabled}
                 className="flex-1 px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-sm font-mono"
                 placeholder="#000000AA"
@@ -266,7 +276,10 @@ export function CaptionEditor({
           {/* Outline */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="outline-toggle" className="text-xs text-neutral-400">
+              <Label
+                htmlFor="outline-toggle"
+                className="text-xs text-neutral-400"
+              >
                 Text Outline
               </Label>
               <Button
@@ -282,7 +295,10 @@ export function CaptionEditor({
 
             {currentStyle.outline && (
               <div className="space-y-2 pl-4 border-l-2 border-neutral-800">
-                <Label htmlFor="outline-color" className="text-xs text-neutral-400">
+                <Label
+                  htmlFor="outline-color"
+                  className="text-xs text-neutral-400"
+                >
                   Outline Color
                 </Label>
                 <div className="flex items-center gap-2">
@@ -290,14 +306,18 @@ export function CaptionEditor({
                     id="outline-color"
                     type="color"
                     value={currentStyle.outlineColor || '#000000'}
-                    onChange={(e) => updateStyle({ outlineColor: e.target.value })}
+                    onChange={(e) =>
+                      updateStyle({ outlineColor: e.target.value })
+                    }
                     disabled={disabled}
                     className="w-12 h-10 rounded border border-neutral-700 bg-neutral-950 cursor-pointer"
                   />
                   <input
                     type="text"
                     value={currentStyle.outlineColor || '#000000'}
-                    onChange={(e) => updateStyle({ outlineColor: e.target.value })}
+                    onChange={(e) =>
+                      updateStyle({ outlineColor: e.target.value })
+                    }
                     disabled={disabled}
                     className="flex-1 px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-sm font-mono"
                     placeholder="#000000"
@@ -312,13 +332,17 @@ export function CaptionEditor({
         <TabsContent value="position" className="p-4 space-y-4">
           {/* Horizontal Alignment */}
           <div className="space-y-2">
-            <Label className="text-xs text-neutral-400">Horizontal Alignment</Label>
+            <Label className="text-xs text-neutral-400">
+              Horizontal Alignment
+            </Label>
             <div className="grid grid-cols-3 gap-2">
               {(['left', 'center', 'right'] as const).map((align) => (
                 <Button
                   key={align}
                   onClick={() => updatePosition({ horizontal: align })}
-                  variant={currentPosition.horizontal === align ? 'default' : 'outline'}
+                  variant={
+                    currentPosition.horizontal === align ? 'default' : 'outline'
+                  }
                   size="sm"
                   disabled={disabled}
                   className="capitalize"
@@ -331,13 +355,17 @@ export function CaptionEditor({
 
           {/* Vertical Alignment */}
           <div className="space-y-2">
-            <Label className="text-xs text-neutral-400">Vertical Alignment</Label>
+            <Label className="text-xs text-neutral-400">
+              Vertical Alignment
+            </Label>
             <div className="grid grid-cols-3 gap-2">
               {(['top', 'middle', 'bottom'] as const).map((align) => (
                 <Button
                   key={align}
                   onClick={() => updatePosition({ vertical: align })}
-                  variant={currentPosition.vertical === align ? 'default' : 'outline'}
+                  variant={
+                    currentPosition.vertical === align ? 'default' : 'outline'
+                  }
                   size="sm"
                   disabled={disabled}
                   className="capitalize"
@@ -396,8 +424,8 @@ export function CaptionEditor({
                 color: currentStyle.fontColor,
                 fontFamily: currentStyle.fontFamily,
                 fontSize: `${currentStyle.fontSize * 0.5}px`, // Scale down for preview
-                fontWeight: currentStyle.bold ? 'bold' : 'normal',
                 fontStyle: currentStyle.italic ? 'italic' : 'normal',
+                fontWeight: currentStyle.bold ? 'bold' : 'normal',
                 textShadow: currentStyle.outline
                   ? `
                     -1px -1px 0 ${currentStyle.outlineColor || '#000000'},

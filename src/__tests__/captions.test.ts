@@ -7,7 +7,7 @@
  * T131: Unit test for caption auto-update on transcript edit
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { captionService } from '@/lib/ai/captions';
 import { CAPTION_CONFIG } from '@/lib/ai/config';
 import type { Caption, Transcript } from '@/lib/ai/types';
@@ -57,13 +57,13 @@ const mockTranscript: Transcript = {
       startTime: 3.5,
       text: 'Today we will learn about screen recording.',
       words: [
-        { confidence: 0.90, endTime: 3.8, startTime: 3.5, text: 'Today' },
+        { confidence: 0.9, endTime: 3.8, startTime: 3.5, text: 'Today' },
         { confidence: 0.87, endTime: 4.0, startTime: 3.8, text: 'we' },
         { confidence: 0.88, endTime: 4.3, startTime: 4.0, text: 'will' },
         { confidence: 0.89, endTime: 4.7, startTime: 4.3, text: 'learn' },
         { confidence: 0.86, endTime: 5.0, startTime: 4.7, text: 'about' },
         { confidence: 0.88, endTime: 5.5, startTime: 5.0, text: 'screen' },
-        { confidence: 0.90, endTime: 6.5, startTime: 5.5, text: 'recording' },
+        { confidence: 0.9, endTime: 6.5, startTime: 5.5, text: 'recording' },
       ],
     },
     {
@@ -152,7 +152,9 @@ describe('CaptionService - Generation (T128)', () => {
       for (const caption of result.captions) {
         const duration = caption.endTime - caption.startTime;
         // Allow small tolerance for rounding in word-based splitting (100ms)
-        expect(duration).toBeLessThanOrEqual(CAPTION_CONFIG.MAX_DURATION_SEC + 0.1);
+        expect(duration).toBeLessThanOrEqual(
+          CAPTION_CONFIG.MAX_DURATION_SEC + 0.1,
+        );
       }
     }
   });
@@ -288,13 +290,15 @@ describe('CaptionService - SRT Export (T129)', () => {
     const specialCaptions: Caption[] = [
       {
         ...testCaptions[0],
-        text: "This is a test with 'quotes' and \"double quotes\".",
+        text: 'This is a test with \'quotes\' and "double quotes".',
       },
     ];
 
     const srt = captionService.toSRT(specialCaptions);
 
-    expect(srt).toContain("This is a test with 'quotes' and \"double quotes\".");
+    expect(srt).toContain(
+      'This is a test with \'quotes\' and "double quotes".',
+    );
   });
 });
 

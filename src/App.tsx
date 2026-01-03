@@ -6,7 +6,6 @@ import { GithubBadge } from '@/components/github-badge';
 import { Logo } from '@/components/logo';
 import { ScreenRecorder } from '@/components/recorder/screen-recorder';
 import { StorageUsageIndicator } from '@/components/storage-usage-indicator';
-import { detectHardwareCapabilities, getCapabilitySummary } from '@/lib/ai/hardware-check';
 import {
   Card,
   CardContent,
@@ -16,6 +15,10 @@ import {
 } from '@/components/ui/card';
 import { Toaster } from '@/components/ui/sonner';
 import { captionService } from '@/lib/ai/captions';
+import {
+  detectHardwareCapabilities,
+  getCapabilitySummary,
+} from '@/lib/ai/hardware-check';
 import { silenceDetectionService } from '@/lib/ai/silence-detection';
 import { transcriptionService } from '@/lib/ai/transcription';
 import type { Caption, SilenceSegment, Transcript } from '@/lib/ai/types';

@@ -96,7 +96,10 @@ export function detectHardwareCapabilities(): HardwareCapabilities {
   }
 
   // Check recommended requirements
-  if (deviceMemoryGB !== undefined && deviceMemoryGB < MINIMUM_REQUIREMENTS.deviceMemoryGB) {
+  if (
+    deviceMemoryGB !== undefined &&
+    deviceMemoryGB < MINIMUM_REQUIREMENTS.deviceMemoryGB
+  ) {
     warnings.push(
       `Low device memory (${deviceMemoryGB}GB). Minimum ${MINIMUM_REQUIREMENTS.deviceMemoryGB}GB recommended for AI processing.`,
     );
@@ -132,7 +135,9 @@ export function detectHardwareCapabilities(): HardwareCapabilities {
 /**
  * Get user-friendly capability summary
  */
-export function getCapabilitySummary(capabilities: HardwareCapabilities): string {
+export function getCapabilitySummary(
+  capabilities: HardwareCapabilities,
+): string {
   if (capabilities.meetsMinimumRequirements) {
     return 'Your device meets the requirements for AI processing.';
   }
