@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
-import { AudioSettings } from "@/lib/types";
-import { createAudioAnalyser, getAudioLevel } from "@/lib/recorder/audio";
+import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { createAudioAnalyser, getAudioLevel } from '@/lib/recorder/audio';
+import type { AudioSettings } from '@/lib/types';
 
 interface AudioControlsProps {
   settings: AudioSettings;
@@ -17,22 +17,26 @@ interface AudioControlsProps {
 function AudioLevelMeter({ level }: { level: number }) {
   const bars = 5;
   const activeBarCount = Math.ceil(level * bars);
-  
+  const barHeights = Array.from(
+    { length: bars },
+    (_, i) => ((i + 1) / bars) * 100,
+  );
+
   return (
     <div className="flex items-end gap-0.5 h-4">
-      {Array.from({ length: bars }).map((_, i) => (
+      {barHeights.map((height, i) => (
         <div
-          key={i}
+          key={height}
           className={`w-1 rounded-full transition-all duration-75 ${
             i < activeBarCount
               ? i < 2
                 ? 'bg-green-500'
                 : i < 4
-                ? 'bg-yellow-500'
-                : 'bg-red-500'
+                  ? 'bg-yellow-500'
+                  : 'bg-red-500'
               : 'bg-neutral-700'
           }`}
-          style={{ height: `${((i + 1) / bars) * 100}%` }}
+          style={{ height: `${height}%` }}
         />
       ))}
     </div>
@@ -61,13 +65,19 @@ export function AudioControls({
     }
 
     audioContextRef.current = new AudioContext();
-    
+
     if (micStream) {
-      micAnalyserRef.current = createAudioAnalyser(audioContextRef.current, micStream);
+      micAnalyserRef.current = createAudioAnalyser(
+        audioContextRef.current,
+        micStream,
+      );
     }
-    
+
     if (systemStream) {
-      systemAnalyserRef.current = createAudioAnalyser(audioContextRef.current, systemStream);
+      systemAnalyserRef.current = createAudioAnalyser(
+        audioContextRef.current,
+        systemStream,
+      );
     }
 
     const updateLevels = () => {
@@ -86,7 +96,10 @@ export function AudioControls({
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== 'closed'
+      ) {
         audioContextRef.current.close();
       }
     };
@@ -97,11 +110,17 @@ export function AudioControls({
       {/* Microphone control */}
       <div className="flex items-center gap-2">
         <Button
-          variant={settings.microphoneEnabled ? "default" : "outline"}
+          variant={settings.microphoneEnabled ? 'default' : 'outline'}
           size="icon"
-          onClick={() => onSettingsChange({ microphoneEnabled: !settings.microphoneEnabled })}
+          onClick={() =>
+            onSettingsChange({ microphoneEnabled: !settings.microphoneEnabled })
+          }
           disabled={disabled}
-          title={settings.microphoneEnabled ? "Disable microphone" : "Enable microphone"}
+          title={
+            settings.microphoneEnabled
+              ? 'Disable microphone'
+              : 'Enable microphone'
+          }
           className="relative"
         >
           {settings.microphoneEnabled ? (
@@ -118,11 +137,19 @@ export function AudioControls({
       {/* System audio control */}
       <div className="flex items-center gap-2">
         <Button
-          variant={settings.systemAudioEnabled ? "default" : "outline"}
+          variant={settings.systemAudioEnabled ? 'default' : 'outline'}
           size="icon"
-          onClick={() => onSettingsChange({ systemAudioEnabled: !settings.systemAudioEnabled })}
+          onClick={() =>
+            onSettingsChange({
+              systemAudioEnabled: !settings.systemAudioEnabled,
+            })
+          }
           disabled={disabled}
-          title={settings.systemAudioEnabled ? "Disable system audio" : "Enable system audio"}
+          title={
+            settings.systemAudioEnabled
+              ? 'Disable system audio'
+              : 'Enable system audio'
+          }
           className="relative"
         >
           {settings.systemAudioEnabled ? (
@@ -138,4 +165,3 @@ export function AudioControls({
     </div>
   );
 }
-
