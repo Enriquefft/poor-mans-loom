@@ -1,9 +1,16 @@
-"use client";
+'use client';
 
-import { useRef, useEffect, useState, useCallback } from "react";
-import { CameraSettings, CameraPosition, CameraSize, CameraShape, CAMERA_SIZE_MAP, CAMERA_POSITION_MAP } from "@/lib/types";
-import { Move, Circle, Square, Maximize2, Minimize2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Circle, Maximize2, Minimize2, Move, Square } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  CAMERA_POSITION_MAP,
+  CAMERA_SIZE_MAP,
+  type CameraPosition,
+  type CameraSettings,
+  type CameraShape,
+  type CameraSize,
+  type RecordingMode,
+} from '@/lib/types';
 
 interface CameraOverlayProps {
   stream: MediaStream | null;
@@ -11,6 +18,7 @@ interface CameraOverlayProps {
   onSettingsChange: (settings: Partial<CameraSettings>) => void;
   containerRef: React.RefObject<HTMLDivElement | null>;
   isRecording: boolean;
+  mode: RecordingMode;
 }
 
 const POSITION_PRESETS: CameraPosition[] = [
@@ -21,7 +29,7 @@ const POSITION_PRESETS: CameraPosition[] = [
   'bottom-center',
 ];
 
-const SIZE_PRESETS: CameraSize[] = ['small', 'medium', 'large'];
+const _SIZE_PRESETS: CameraSize[] = ['small', 'medium', 'large'];
 
 /**
  * Delay in milliseconds before hiding camera controls after mouse/touch leaves.
@@ -45,6 +53,7 @@ export function CameraOverlay({
   onSettingsChange,
   containerRef,
   isRecording,
+  mode,
 }: CameraOverlayProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -59,7 +68,8 @@ export function CameraOverlay({
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
       videoRef.current.play().catch((e) => {
-        if (e.name !== 'AbortError') console.error('Camera preview play failed:', e);
+        if (e.name !== 'AbortError')
+          console.error('Camera preview play failed:', e);
       });
     }
   }, [stream]);
@@ -92,8 +102,8 @@ export function CameraOverlay({
   const getPositionStyles = useCallback(() => {
     if (settings.customPosition) {
       return {
-        position: 'absolute' as const,
         left: settings.customPosition.x,
+        position: 'absolute' as const,
         top: settings.customPosition.y,
       };
     }
@@ -102,7 +112,9 @@ export function CameraOverlay({
     return {
       position: 'absolute' as const,
       ...positionStyles,
-      ...(settings.position === 'bottom-center' && { transform: 'translateX(-50%)' }),
+      ...(settings.position === 'bottom-center' && {
+        transform: 'translateX(-50%)',
+      }),
     };
   }, [settings.position, settings.customPosition]);
 
@@ -117,10 +129,10 @@ export function CameraOverlay({
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    
+
     setIsDragging(true);
     dragStartRef.current = { x: e.clientX, y: e.clientY };
-    
+
     const rect = overlayRef.current?.getBoundingClientRect();
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (rect && containerRect) {
@@ -137,20 +149,26 @@ export function CameraOverlay({
     const handleMouseMove = (e: MouseEvent) => {
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
-      
+
       const containerRect = containerRef.current?.getBoundingClientRect();
       const size = getSizeStyles();
-      
+
       if (containerRect) {
-        const newX = Math.max(0, Math.min(
-          positionRef.current.x + dx,
-          containerRect.width - size.width
-        ));
-        const newY = Math.max(0, Math.min(
-          positionRef.current.y + dy,
-          containerRect.height - size.height
-        ));
-        
+        const newX = Math.max(
+          0,
+          Math.min(
+            positionRef.current.x + dx,
+            containerRect.width - size.width,
+          ),
+        );
+        const newY = Math.max(
+          0,
+          Math.min(
+            positionRef.current.y + dy,
+            containerRect.height - size.height,
+          ),
+        );
+
         onSettingsChange({
           customPosition: { x: newX, y: newY },
         });
@@ -172,15 +190,15 @@ export function CameraOverlay({
 
   const handlePositionPreset = (position: CameraPosition) => {
     onSettingsChange({
-      position,
       customPosition: undefined,
+      position,
     });
   };
 
   const handleSizeChange = (size: CameraSize) => {
     onSettingsChange({
-      size,
       customSize: undefined,
+      size,
     });
   };
 
@@ -196,10 +214,11 @@ export function CameraOverlay({
    * @see T017, T018 in specs/001-fix-camera-controls/tasks.md
    */
   const handleTouchToggle = () => {
-    setControlsVisible(prev => !prev);
+    setControlsVisible((prev) => !prev);
   };
 
-  if (!stream) return null;
+  // Only show camera overlay for screen+camera mode
+  if (!stream || mode !== 'screen+camera') return null;
 
   const positionStyles = getPositionStyles();
   const sizeStyles = getSizeStyles();
@@ -210,9 +229,9 @@ export function CameraOverlay({
       className={`z-50 group ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       style={{
         ...positionStyles,
-        width: sizeStyles.width,
         height: sizeStyles.height,
         transition: isDragging ? 'none' : 'all 0.2s ease-out',
+        width: sizeStyles.width,
       }}
       onMouseDown={handleMouseDown}
       onMouseEnter={() => setIsHovering(true)}
@@ -265,10 +284,13 @@ export function CameraOverlay({
               >
                 <div
                   className={`w-2 h-2 rounded-sm bg-white/80 ${
-                    pos === 'top-left' ? '-translate-x-0.5 -translate-y-0.5' :
-                    pos === 'top-right' ? 'translate-x-0.5 -translate-y-0.5' :
-                    pos === 'bottom-left' ? '-translate-x-0.5 translate-y-0.5' :
-                    'translate-x-0.5 translate-y-0.5'
+                    pos === 'top-left'
+                      ? '-translate-x-0.5 -translate-y-0.5'
+                      : pos === 'top-right'
+                        ? 'translate-x-0.5 -translate-y-0.5'
+                        : pos === 'bottom-left'
+                          ? '-translate-x-0.5 translate-y-0.5'
+                          : 'translate-x-0.5 translate-y-0.5'
                   }`}
                 />
               </button>
@@ -315,7 +337,9 @@ export function CameraOverlay({
                 handleShapeChange('rectangle');
               }}
               className={`p-1 rounded ${
-                settings.shape === 'rectangle' ? 'bg-white/20' : 'hover:bg-white/10'
+                settings.shape === 'rectangle'
+                  ? 'bg-white/20'
+                  : 'hover:bg-white/10'
               }`}
               title="Rectangle"
             >
@@ -327,7 +351,9 @@ export function CameraOverlay({
                 handleShapeChange('circle');
               }}
               className={`p-1 rounded ${
-                settings.shape === 'circle' ? 'bg-white/20' : 'hover:bg-white/10'
+                settings.shape === 'circle'
+                  ? 'bg-white/20'
+                  : 'hover:bg-white/10'
               }`}
               title="Circle"
             >
@@ -339,4 +365,3 @@ export function CameraOverlay({
     </div>
   );
 }
-

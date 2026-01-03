@@ -1,13 +1,22 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { Circle, Square, Pause, Play, Video, VideoOff, RotateCcw } from "lucide-react";
-import { RecordingState } from "@/lib/types";
+import {
+  Circle,
+  Pause,
+  Play,
+  RotateCcw,
+  Square,
+  Video,
+  VideoOff,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { RecordingMode, RecordingState } from '@/lib/types';
 
 interface RecordingControlsProps {
   recordingState: RecordingState;
   cameraEnabled: boolean;
   hasRecording: boolean;
+  mode: RecordingMode;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onPauseRecording: () => void;
@@ -26,6 +35,7 @@ export function RecordingControls({
   recordingState,
   cameraEnabled,
   hasRecording,
+  mode,
   onStartRecording,
   onStopRecording,
   onPauseRecording,
@@ -37,21 +47,23 @@ export function RecordingControls({
 
   return (
     <div className="flex items-center justify-between w-full">
-      {/* Left: Camera toggle */}
+      {/* Left: Camera toggle (only for screen+camera mode) */}
       <div className="flex items-center gap-2">
-        <Button
-          variant={cameraEnabled ? "default" : "outline"}
-          size="icon"
-          onClick={onToggleCamera}
-          disabled={isRecording}
-          title={cameraEnabled ? "Disable camera" : "Enable camera"}
-        >
-          {cameraEnabled ? (
-            <Video className="h-4 w-4" />
-          ) : (
-            <VideoOff className="h-4 w-4" />
-          )}
-        </Button>
+        {mode === 'screen+camera' && (
+          <Button
+            variant={cameraEnabled ? 'default' : 'outline'}
+            size="icon"
+            onClick={onToggleCamera}
+            disabled={isRecording}
+            title={cameraEnabled ? 'Disable camera' : 'Enable camera'}
+          >
+            {cameraEnabled ? (
+              <Video className="h-4 w-4" />
+            ) : (
+              <VideoOff className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Center: Recording controls */}
@@ -60,7 +72,9 @@ export function RecordingControls({
           <>
             {/* Recording timer */}
             <div className="flex items-center gap-2 min-w-[80px]">
-              <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`} />
+              <div
+                className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`}
+              />
               <span className="font-mono text-sm text-neutral-300">
                 {formatDuration(duration)}
               </span>
@@ -71,7 +85,7 @@ export function RecordingControls({
               variant="outline"
               size="icon"
               onClick={isPaused ? onResumeRecording : onPauseRecording}
-              title={isPaused ? "Resume recording" : "Pause recording"}
+              title={isPaused ? 'Resume recording' : 'Pause recording'}
             >
               {isPaused ? (
                 <Play className="h-4 w-4" />
@@ -81,10 +95,7 @@ export function RecordingControls({
             </Button>
 
             {/* Stop */}
-            <Button
-              variant="destructive"
-              onClick={onStopRecording}
-            >
+            <Button variant="destructive" onClick={onStopRecording}>
               <Square className="h-4 w-4 mr-2" />
               Stop
             </Button>
@@ -118,4 +129,3 @@ export function RecordingControls({
     </div>
   );
 }
-
