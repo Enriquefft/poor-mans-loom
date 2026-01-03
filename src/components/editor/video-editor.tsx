@@ -5,9 +5,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { VideoPlayer } from '@/components/player/video-player';
 import { Button } from '@/components/ui/button';
-import type { SilenceSegment, Transcript } from '@/lib/ai/types';
+import type { Caption, SilenceSegment, Transcript } from '@/lib/ai/types';
 import {
   downloadBlob,
+  downloadCaptionFile,
   exportVideo,
   getExportFilename,
 } from '@/lib/editor/operations';
@@ -24,6 +25,7 @@ import {
   trimStart,
 } from '@/lib/editor/timeline';
 import type { EditorState, ExportOptions, ExportProgress } from '@/lib/types';
+import { CaptionEditor } from './caption-editor';
 import { ExportDialog } from './export-dialog';
 import { SilenceMarkers } from './silence-markers';
 import { Timeline } from './timeline';
@@ -39,6 +41,8 @@ interface VideoEditorProps {
   silenceSegments?: SilenceSegment[];
   onSilenceSegmentsChange?: (segments: SilenceSegment[]) => void;
   isDetectingSilence?: boolean;
+  captions?: Caption[];
+  onCaptionsChange?: (captions: Caption[]) => void;
 }
 
 export function VideoEditor({
@@ -51,6 +55,8 @@ export function VideoEditor({
   silenceSegments = [],
   onSilenceSegmentsChange,
   isDetectingSilence = false,
+  captions = [],
+  onCaptionsChange,
 }: VideoEditorProps) {
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [editorState, setEditorState] = useState<EditorState>(() => ({
@@ -64,6 +70,7 @@ export function VideoEditor({
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(
     null,
   );
+  const [showCaptionPreview, setShowCaptionPreview] = useState(false);
 
   // Calculate these early so they can be used in callbacks
   const activeDuration = getTotalActiveDuration(editorState);
@@ -147,16 +154,30 @@ export function VideoEditor({
       }
 
       try {
+        // T120: Pass captions to export if burn-in enabled
+        const captionsForExport =
+          options.captions?.enabled && options.captions.burnIn
+            ? captions
+            : undefined;
+
         const outputBlob = await exportVideo(
           videoBlob,
           editorState,
           options,
           setExportProgress,
+          captionsForExport,
         );
 
         const filename = getExportFilename(options.format);
         downloadBlob(outputBlob, filename);
-        toast.success(`Video exported as ${filename}`);
+
+        // T121: Export separate caption file if requested
+        if (options.captions?.enabled && !options.captions.burnIn && captions.length > 0) {
+          downloadCaptionFile(captions, 'srt');
+          toast.success(`Video and captions exported`);
+        } else {
+          toast.success(`Video exported as ${filename}`);
+        }
       } catch (error) {
         console.error('Export failed:', error);
         const errorMessage =
@@ -289,6 +310,16 @@ export function VideoEditor({
         </div>
       )}
 
+      {/* T120-T121: Caption Editor */}
+      {captions.length > 0 && onCaptionsChange && (
+        <CaptionEditor
+          captions={captions}
+          onCaptionsChange={onCaptionsChange}
+          showPreview={showCaptionPreview}
+          onShowPreviewChange={setShowCaptionPreview}
+        />
+      )}
+
       {/* Editor info */}
       <div className="flex items-center justify-between text-xs font-mono text-neutral-500">
         <span>
@@ -331,6 +362,7 @@ export function VideoEditor({
         onExport={handleExport}
         progress={exportProgress}
         isExporting={isExporting}
+        hasCaptions={captions.length > 0}
       />
     </div>
   );

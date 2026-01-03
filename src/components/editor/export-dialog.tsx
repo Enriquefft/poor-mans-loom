@@ -25,6 +25,7 @@ interface ExportDialogProps {
   onExport: (options: ExportOptions) => void;
   progress: ExportProgress | null;
   isExporting: boolean;
+  hasCaptions?: boolean; // T121: Enable caption export options
 }
 
 export function ExportDialog({
@@ -33,12 +34,24 @@ export function ExportDialog({
   onExport,
   progress,
   isExporting,
+  hasCaptions = false,
 }: ExportDialogProps) {
   const [format, setFormat] = useState<ExportOptions['format']>('webm');
   const [quality, setQuality] = useState<ExportOptions['quality']>('medium');
+  const [captionsEnabled, setCaptionsEnabled] = useState(false);
+  const [captionsBurnIn, setCaptionsBurnIn] = useState(true);
 
   const handleExport = () => {
-    onExport({ format, quality });
+    onExport({
+      format,
+      quality,
+      captions: hasCaptions && captionsEnabled
+        ? {
+            enabled: true,
+            burnIn: captionsBurnIn,
+          }
+        : undefined,
+    });
   };
 
   const getStageIcon = () => {
@@ -154,6 +167,67 @@ export function ExportDialog({
                 {quality === 'high' && 'Best quality, larger file size'}
               </p>
             </div>
+
+            {/* T121: Caption options */}
+            {hasCaptions && (
+              <div className="space-y-3 pt-3 border-t border-neutral-800">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-mono text-neutral-400">
+                    Include Captions
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCaptionsEnabled(!captionsEnabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      captionsEnabled ? 'bg-blue-500' : 'bg-neutral-700'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        captionsEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {captionsEnabled && (
+                  <div className="space-y-2 pl-4 border-l-2 border-neutral-800">
+                    <div className="text-xs font-mono text-neutral-400">
+                      Caption Export Mode
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCaptionsBurnIn(true)}
+                        className={`py-2 px-3 rounded-lg border transition-all text-xs font-mono ${
+                          captionsBurnIn
+                            ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                            : 'border-neutral-700 hover:border-neutral-600 text-neutral-400'
+                        }`}
+                      >
+                        Burned In
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCaptionsBurnIn(false)}
+                        className={`py-2 px-3 rounded-lg border transition-all text-xs font-mono ${
+                          !captionsBurnIn
+                            ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                            : 'border-neutral-700 hover:border-neutral-600 text-neutral-400'
+                        }`}
+                      >
+                        Separate File
+                      </button>
+                    </div>
+                    <p className="text-xs text-neutral-500 font-mono">
+                      {captionsBurnIn
+                        ? 'Captions will be permanently embedded in video'
+                        : 'Captions will be exported as separate .srt file'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
