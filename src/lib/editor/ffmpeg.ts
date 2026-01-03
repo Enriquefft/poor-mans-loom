@@ -1,6 +1,6 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL } from '@ffmpeg/util';
-import { ExportProgress } from '../types';
+import type { ExportProgress } from '../types';
 
 let ffmpegInstance: FFmpeg | null = null;
 let isLoading = false;
@@ -10,71 +10,71 @@ const CORE_VERSION = '0.12.6';
 const BASE_URL = `https://unpkg.com/@ffmpeg/core@${CORE_VERSION}/dist/umd`;
 
 export async function getFFmpeg(
-  onProgress?: (progress: ExportProgress) => void
+  onProgress?: (progress: ExportProgress) => void,
 ): Promise<FFmpeg> {
-  if (ffmpegInstance && ffmpegInstance.loaded) {
+  if (ffmpegInstance?.loaded) {
     return ffmpegInstance;
   }
-  
+
   if (loadPromise) {
     return loadPromise;
   }
-  
+
   if (isLoading) {
     return new Promise((resolve) => {
       const checkLoaded = setInterval(() => {
-        if (ffmpegInstance && ffmpegInstance.loaded) {
+        if (ffmpegInstance?.loaded) {
           clearInterval(checkLoaded);
           resolve(ffmpegInstance);
         }
       }, 100);
     });
   }
-  
+
   isLoading = true;
-  
+
   loadPromise = (async () => {
     onProgress?.({
-      stage: 'preparing',
-      progress: 0,
       message: 'Loading video processor...',
+      progress: 0,
+      stage: 'preparing',
     });
-    
+
     const ffmpeg = new FFmpeg();
-    
+
     ffmpeg.on('progress', ({ progress }) => {
       onProgress?.({
-        stage: 'processing',
-        progress: Math.round(progress * 100),
         message: `Processing: ${Math.round(progress * 100)}%`,
+        progress: Math.round(progress * 100),
+        stage: 'processing',
       });
     });
-    
+
     try {
       // Load FFmpeg core from CDN using UMD build (more compatible)
       const coreURL = await toBlobURL(
         `${BASE_URL}/ffmpeg-core.js`,
-        'text/javascript'
+        'text/javascript',
       );
       const wasmURL = await toBlobURL(
         `${BASE_URL}/ffmpeg-core.wasm`,
-        'application/wasm'
+        'application/wasm',
       );
-      
+
       await ffmpeg.load({
         coreURL,
         wasmURL,
       });
-      
+
       ffmpegInstance = ffmpeg;
       isLoading = false;
-      
+
       onProgress?.({
-        stage: 'preparing',
-        progress: 100,
         message: 'Video processor ready',
+        progress: 100,
+        stage: 'preparing',
       });
-      
+
       return ffmpeg;
     } catch (error) {
       isLoading = false;
@@ -83,14 +83,14 @@ export async function getFFmpeg(
       throw new Error('Failed to load video processor. Please try again.');
     }
   })();
-  
+
   return loadPromise;
 }
 
 export async function writeFileToFFmpeg(
   ffmpeg: FFmpeg,
   filename: string,
-  data: Blob | Uint8Array | string
+  data: Blob | Uint8Array | string,
 ): Promise<void> {
   if (data instanceof Blob) {
     const arrayBuffer = await data.arrayBuffer();
@@ -106,7 +106,7 @@ export async function writeFileToFFmpeg(
 
 export async function readFileFromFFmpeg(
   ffmpeg: FFmpeg,
-  filename: string
+  filename: string,
 ): Promise<Uint8Array> {
   const data = await ffmpeg.readFile(filename);
   return data as Uint8Array;
@@ -114,7 +114,7 @@ export async function readFileFromFFmpeg(
 
 export async function deleteFileFromFFmpeg(
   ffmpeg: FFmpeg,
-  filename: string
+  filename: string,
 ): Promise<void> {
   try {
     await ffmpeg.deleteFile(filename);
@@ -124,7 +124,7 @@ export async function deleteFileFromFFmpeg(
 }
 
 export function isFFmpegLoaded(): boolean {
-  return ffmpegInstance !== null && ffmpegInstance.loaded;
+  return ffmpegInstance?.loaded;
 }
 
 export function resetFFmpeg(): void {

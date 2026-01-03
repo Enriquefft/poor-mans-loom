@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useRef, useState, useCallback, useEffect } from "react";
-import { EditorState, TimelineSegment } from "@/lib/types";
-import { formatTime } from "@/lib/editor/timeline";
-import { Scissors, Trash2, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RotateCcw, Scissors, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { formatTime } from '@/lib/editor/timeline';
+import type { EditorState } from '@/lib/types';
 
 interface TimelineProps {
   editorState: EditorState;
@@ -28,53 +28,74 @@ export function Timeline({
   currentTime,
 }: TimelineProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState<'start' | 'end' | 'playhead' | null>(null);
+  const [isDragging, setIsDragging] = useState<
+    'start' | 'end' | 'playhead' | null
+  >(null);
   const [splitMode, setSplitMode] = useState(false);
   const [hoveredSegment, setHoveredSegment] = useState<string | null>(null);
 
-  const getTimeFromPosition = useCallback((clientX: number): number => {
-    if (!timelineRef.current) return 0;
-    
-    const rect = timelineRef.current.getBoundingClientRect();
-    const relativeX = clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, relativeX / rect.width));
-    return percentage * editorState.duration;
-  }, [editorState.duration]);
+  const getTimeFromPosition = useCallback(
+    (clientX: number): number => {
+      if (!timelineRef.current) return 0;
 
-  const getPositionFromTime = useCallback((time: number): number => {
-    return (time / editorState.duration) * 100;
-  }, [editorState.duration]);
+      const rect = timelineRef.current.getBoundingClientRect();
+      const relativeX = clientX - rect.left;
+      const percentage = Math.max(0, Math.min(1, relativeX / rect.width));
+      return percentage * editorState.duration;
+    },
+    [editorState.duration],
+  );
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, type: 'start' | 'end' | 'playhead') => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(type);
-  }, []);
+  const getPositionFromTime = useCallback(
+    (time: number): number => {
+      return (time / editorState.duration) * 100;
+    },
+    [editorState.duration],
+  );
 
-  const handleTimelineClick = useCallback((e: React.MouseEvent) => {
-    if (isDragging) return;
-    
-    const time = getTimeFromPosition(e.clientX);
-    
-    if (splitMode) {
-      const segment = editorState.segments.find(
-        s => !s.deleted && time >= s.startTime && time <= s.endTime
-      );
-      if (segment) {
-        onSplit(segment.id, time);
-        setSplitMode(false);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent, type: 'start' | 'end' | 'playhead') => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(type);
+    },
+    [],
+  );
+
+  const handleTimelineClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (isDragging) return;
+
+      const time = getTimeFromPosition(e.clientX);
+
+      if (splitMode) {
+        const segment = editorState.segments.find(
+          (s) => !s.deleted && time >= s.startTime && time <= s.endTime,
+        );
+        if (segment) {
+          onSplit(segment.id, time);
+          setSplitMode(false);
+        }
+      } else {
+        onSeek(time);
       }
-    } else {
-      onSeek(time);
-    }
-  }, [isDragging, getTimeFromPosition, splitMode, editorState.segments, onSplit, onSeek]);
+    },
+    [
+      isDragging,
+      getTimeFromPosition,
+      splitMode,
+      editorState.segments,
+      onSplit,
+      onSeek,
+    ],
+  );
 
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const time = getTimeFromPosition(e.clientX);
-      
+
       if (isDragging === 'start') {
         onTrimStart(time);
       } else if (isDragging === 'end') {
@@ -97,8 +118,10 @@ export function Timeline({
     };
   }, [isDragging, getTimeFromPosition, onTrimStart, onTrimEnd, onSeek]);
 
-  const firstActiveSegment = editorState.segments.find(s => !s.deleted);
-  const lastActiveSegment = [...editorState.segments].reverse().find(s => !s.deleted);
+  const firstActiveSegment = editorState.segments.find((s) => !s.deleted);
+  const lastActiveSegment = [...editorState.segments]
+    .reverse()
+    .find((s) => !s.deleted);
 
   return (
     <div className="w-full space-y-3">
@@ -106,7 +129,7 @@ export function Timeline({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
-            variant={splitMode ? "default" : "outline"}
+            variant={splitMode ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSplitMode(!splitMode)}
             title="Split tool - click on timeline to split"
@@ -115,7 +138,7 @@ export function Timeline({
             Split
           </Button>
         </div>
-        
+
         <div className="text-xs font-mono text-neutral-400">
           {formatTime(currentTime)} / {formatTime(editorState.duration)}
         </div>
@@ -124,10 +147,18 @@ export function Timeline({
       {/* Timeline track */}
       <div
         ref={timelineRef}
+        role="button"
+        tabIndex={0}
         className={`relative h-16 bg-neutral-900 rounded-lg overflow-hidden noise-texture noise-texture-subtle ${
           splitMode ? 'cursor-crosshair' : 'cursor-pointer'
         }`}
         onClick={handleTimelineClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleTimelineClick(e as unknown as React.MouseEvent);
+          }
+        }}
       >
         {/* Time markers */}
         <div className="absolute top-0 left-0 right-0 h-4 flex items-center border-b border-neutral-800">
@@ -135,7 +166,7 @@ export function Timeline({
             const time = (editorState.duration / 10) * i;
             return (
               <div
-                key={i}
+                key={`marker-${time.toFixed(2)}`}
                 className="absolute flex flex-col items-center"
                 style={{ left: `${i * 10}%` }}
               >
@@ -153,6 +184,8 @@ export function Timeline({
           {editorState.segments.map((segment) => (
             <div
               key={segment.id}
+              role="button"
+              tabIndex={0}
               className={`absolute top-1 bottom-1 rounded transition-all ${
                 segment.deleted
                   ? 'bg-neutral-800/50 border border-dashed border-neutral-700'
@@ -170,6 +203,7 @@ export function Timeline({
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-neutral-800 rounded px-1 py-0.5 shadow-lg z-10">
                   {segment.deleted ? (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onRestoreSegment(segment.id);
@@ -181,6 +215,7 @@ export function Timeline({
                     </button>
                   ) : (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onDeleteSegment(segment.id);
@@ -200,18 +235,28 @@ export function Timeline({
         {/* Trim handles */}
         {firstActiveSegment && (
           <div
+            role="slider"
+            tabIndex={0}
+            aria-label="Trim start handle"
             className="absolute top-5 bottom-0 w-2 bg-yellow-500 cursor-ew-resize z-20 hover:bg-yellow-400 rounded-l"
-            style={{ left: `${getPositionFromTime(firstActiveSegment.startTime)}%` }}
+            style={{
+              left: `${getPositionFromTime(firstActiveSegment.startTime)}%`,
+            }}
             onMouseDown={(e) => handleMouseDown(e, 'start')}
           >
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-6 bg-yellow-300 rounded" />
           </div>
         )}
-        
+
         {lastActiveSegment && (
           <div
+            role="slider"
+            tabIndex={0}
+            aria-label="Trim end handle"
             className="absolute top-5 bottom-0 w-2 bg-yellow-500 cursor-ew-resize z-20 hover:bg-yellow-400 rounded-r"
-            style={{ left: `calc(${getPositionFromTime(lastActiveSegment.endTime)}% - 8px)` }}
+            style={{
+              left: `calc(${getPositionFromTime(lastActiveSegment.endTime)}% - 8px)`,
+            }}
             onMouseDown={(e) => handleMouseDown(e, 'end')}
           >
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-6 bg-yellow-300 rounded" />
@@ -220,6 +265,9 @@ export function Timeline({
 
         {/* Playhead */}
         <div
+          role="slider"
+          tabIndex={0}
+          aria-label="Playhead"
           className="absolute top-0 bottom-0 w-0.5 bg-white z-30 cursor-ew-resize"
           style={{ left: `${getPositionFromTime(currentTime)}%` }}
           onMouseDown={(e) => handleMouseDown(e, 'playhead')}
@@ -239,11 +287,11 @@ export function Timeline({
                 : 'bg-blue-600/20 text-blue-400 border border-blue-600/30'
             }`}
           >
-            Segment {index + 1}: {formatTime(segment.startTime)} - {formatTime(segment.endTime)}
+            Segment {index + 1}: {formatTime(segment.startTime)} -{' '}
+            {formatTime(segment.endTime)}
           </div>
         ))}
       </div>
     </div>
   );
 }
-
