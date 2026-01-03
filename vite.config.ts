@@ -1,30 +1,22 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
-import basicSsl from '@vitejs/plugin-basic-ssl'
-import path from 'path'
+import path from 'node:path';
+import basicSsl from '@vitejs/plugin-basic-ssl';
+import react from '@vitejs/plugin-react-swc';
+import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    basicSsl(),
-    {
-      name: 'configure-response-headers',
-      configureServer: (server) => {
-        server.middlewares.use((_req, res, next) => {
-          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
-          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
-          next()
-        })
-      },
-    },
-  ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+  build: {
+    minify: 'esbuild',
+    outDir: 'dist',
+    sourcemap: false,
   },
   optimizeDeps: {
+    exclude: [
+      '@ffmpeg/ffmpeg',
+      '@ffmpeg/util',
+      '@xenova/transformers', // WASM-based AI models
+      '@mediapipe/tasks-vision', // WebGL-based segmentation
+    ],
     include: [
       'react',
       'react-dom',
@@ -34,17 +26,27 @@ export default defineConfig({
       'tailwind-merge',
       'class-variance-authority',
     ],
-    exclude: [
-      '@ffmpeg/ffmpeg',
-      '@ffmpeg/util',
-    ],
+  },
+  plugins: [
+    react(),
+    basicSsl(),
+    {
+      configureServer: (server) => {
+        server.middlewares.use((_req, res, next) => {
+          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+          next();
+        });
+      },
+      name: 'configure-response-headers',
+    },
+  ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
   },
   server: {
     port: 3000,
   },
-  build: {
-    outDir: 'dist',
-    minify: 'esbuild',
-    sourcemap: false,
-  },
-})
+});
