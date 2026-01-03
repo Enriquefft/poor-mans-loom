@@ -23,6 +23,11 @@ export const AI_MODELS = {
   /**
    * Whisper Tiny English Model
    * Size: ~40MB | Accuracy: 90%+ | Speed: ~2x realtime
+   *
+   * T136: Multi-language support available by switching to:
+   * - id: 'Xenova/whisper-tiny' (multilingual, ~75MB)
+   * - language: undefined (for auto-detection)
+   * See FR-022 for multi-language requirements
    */
   WHISPER_TINY_EN: {
     id: 'Xenova/whisper-tiny.en',

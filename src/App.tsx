@@ -1,10 +1,12 @@
 import { Heart, Scissors, Video } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { VideoEditor } from '@/components/editor/video-editor';
 import { GithubBadge } from '@/components/github-badge';
 import { Logo } from '@/components/logo';
 import { ScreenRecorder } from '@/components/recorder/screen-recorder';
+import { StorageUsageIndicator } from '@/components/storage-usage-indicator';
+import { detectHardwareCapabilities, getCapabilitySummary } from '@/lib/ai/hardware-check';
 import {
   Card,
   CardContent,
@@ -38,6 +40,64 @@ export default function App() {
   const [silenceSegments, setSilenceSegments] = useState<SilenceSegment[]>([]);
   const [isDetectingSilence, setIsDetectingSilence] = useState(false);
   const [captions, setCaptions] = useState<Caption[]>([]);
+
+  /**
+   * T137: Check hardware capabilities on mount and warn if insufficient
+   */
+  useEffect(() => {
+    const capabilities = detectHardwareCapabilities();
+
+    if (!capabilities.meetsMinimumRequirements) {
+      const summary = getCapabilitySummary(capabilities);
+
+      if (capabilities.hasSharedArrayBuffer) {
+        // Performance warnings (non-critical)
+        toast.warning('Hardware limitations detected', {
+          description: summary,
+          duration: 8000,
+        });
+      } else {
+        // Critical - AI features won't work
+        toast.error('AI features unavailable', {
+          description: summary,
+          duration: 10000,
+        });
+      }
+
+      // Log detailed warnings
+      if (capabilities.warnings.length > 0) {
+        console.warn('Hardware capability warnings:', capabilities.warnings);
+      }
+    }
+  }, []);
+
+  /**
+   * T132: Helper to handle storage errors with user notification
+   */
+  const handleStorageError = useCallback(
+    (
+      result: { success: boolean; type?: string; message?: string },
+      operationName: string,
+    ) => {
+      if (result.success) return true;
+
+      if (result.type === 'QUOTA_EXCEEDED') {
+        toast.error('Storage quota exceeded', {
+          description:
+            'Your browser storage is full. Click the storage indicator in the header to free up space by deleting old recordings and AI data.',
+          duration: 8000,
+        });
+      } else {
+        toast.error(`Failed to save ${operationName}`, {
+          description: result.message || 'Unknown storage error',
+          duration: 5000,
+        });
+      }
+
+      return false;
+    },
+    [],
+  );
 
   /**
    * T037-T039: Auto-trigger transcription on recording completion
@@ -84,16 +144,28 @@ export default function App() {
             recordingId,
           };
 
-          // Save to storage
-          await storageService.saveTranscript(finalTranscript);
+          // T132: Save to storage with error handling
+          const transcriptSaveResult =
+            await storageService.saveTranscript(finalTranscript);
+          if (!handleStorageError(transcriptSaveResult, 'transcript')) {
+            toast.error('Transcription succeeded but could not be saved', {
+              id: toastId,
+            });
+            return;
+          }
           setTranscript(finalTranscript);
 
           // T125: Auto-generate captions from transcript
           const captionResult = captionService.generate(finalTranscript);
           if (captionResult.success) {
-            // Save captions to storage
-            await storageService.saveCaptions(recordingId, captionResult.captions);
-            setCaptions(captionResult.captions);
+            // T132: Save captions to storage with error handling
+            const captionsSaveResult = await storageService.saveCaptions(
+              recordingId,
+              captionResult.captions,
+            );
+            if (handleStorageError(captionsSaveResult, 'captions')) {
+              setCaptions(captionResult.captions);
+            }
 
             toast.success(
               `Transcription complete (${finalTranscript.segments.length} segments, ${captionResult.captions.length} captions)`,
@@ -138,12 +210,14 @@ export default function App() {
         );
 
         if (silenceResult.success) {
-          // Save to storage
-          await storageService.saveSilenceSegments(
+          // T132: Save to storage with error handling
+          const silenceSaveResult = await storageService.saveSilenceSegments(
             recordingId,
             silenceResult.segments,
           );
-          setSilenceSegments(silenceResult.segments);
+          if (handleStorageError(silenceSaveResult, 'silence segments')) {
+            setSilenceSegments(silenceResult.segments);
+          }
 
           if (silenceResult.segments.length > 0) {
             toast.success(
@@ -187,24 +261,32 @@ export default function App() {
   const handleTranscriptUpdate = useCallback(
     async (updated: Transcript) => {
       setTranscript(updated);
-      await storageService.updateTranscript(updated);
+
+      // T132: Save transcript update with error handling
+      const updateResult = await storageService.updateTranscript(updated);
+      if (!handleStorageError(updateResult, 'transcript update')) {
+        return;
+      }
 
       // T126: Auto-update captions when transcript changes
       if (captions.length > 0) {
-        const updateResult = captionService.updateFromTranscript(
+        const captionUpdateResult = captionService.updateFromTranscript(
           updated,
           captions,
         );
-        if (updateResult.success && recordingData) {
-          await storageService.saveCaptions(
+        if (captionUpdateResult.success && recordingData) {
+          // T132: Save captions with error handling
+          const captionsSaveResult = await storageService.saveCaptions(
             recordingData.recordingId,
-            updateResult.captions,
+            captionUpdateResult.captions,
           );
-          setCaptions(updateResult.captions);
+          if (handleStorageError(captionsSaveResult, 'captions')) {
+            setCaptions(captionUpdateResult.captions);
+          }
         }
       }
     },
-    [captions, recordingData],
+    [captions, recordingData, handleStorageError],
   );
 
   return (
@@ -227,7 +309,10 @@ export default function App() {
             </span>
           </div>
 
-          <GithubBadge />
+          <div className="flex items-center gap-3">
+            <StorageUsageIndicator />
+            <GithubBadge />
+          </div>
         </div>
       </header>
 

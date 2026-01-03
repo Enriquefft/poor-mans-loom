@@ -78,6 +78,44 @@ type WorkerResponse =
 // Model Initialization
 // ============================================================================
 
+/**
+ * T135: Retry helper with exponential backoff for CDN downloads
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelay = 1000,
+): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      // Don't retry on last attempt
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      // Calculate exponential backoff: 1s, 2s, 4s
+      const delay = baseDelay * Math.pow(2, attempt);
+
+      self.postMessage({
+        progress: 0,
+        status: `Retrying model download (attempt ${attempt + 2}/${maxRetries + 1})...`,
+        type: 'progress',
+      } as ProgressUpdate);
+
+      // Wait before retry
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+}
+
 async function initializeModel(): Promise<void> {
   if (transcriber || isInitializing) return;
 
@@ -91,34 +129,44 @@ async function initializeModel(): Promise<void> {
       type: 'progress',
     } as ProgressUpdate);
 
-    // Initialize pipeline with progress callback
-    transcriber = await pipeline(
-      'automatic-speech-recognition',
-      AI_MODELS.WHISPER_TINY_EN.id,
-      {
-        progress_callback: (progress: {
-          status: string;
-          progress?: number;
-        }) => {
-          self.postMessage({
-            progress: progress.progress || 0,
-            status: progress.status,
-            type: 'progress',
-          } as ProgressUpdate);
+    // T135: Initialize pipeline with retry logic for CDN downloads
+    transcriber = await retryWithBackoff(async () => {
+      return await pipeline(
+        'automatic-speech-recognition',
+        AI_MODELS.WHISPER_TINY_EN.id,
+        {
+          progress_callback: (progress: {
+            status: string;
+            progress?: number;
+          }) => {
+            self.postMessage({
+              progress: progress.progress || 0,
+              status: progress.status,
+              type: 'progress',
+            } as ProgressUpdate);
+          },
         },
-      },
-    );
+      );
+    });
 
     self.postMessage({
       modelVersion: AI_MODELS.WHISPER_TINY_EN.id,
       type: 'ready',
     } as ReadyMessage);
   } catch (error) {
+    // T134: Provide helpful error messages for graceful degradation
+    const isNetworkError =
+      error instanceof Error &&
+      (error.message.includes('fetch') ||
+        error.message.includes('network') ||
+        error.message.includes('Failed to load'));
+
     self.postMessage({
       error: {
         details: error,
-        message:
-          error instanceof Error
+        message: isNetworkError
+          ? 'Failed to download AI model. Please check your internet connection and try again.'
+          : error instanceof Error
             ? error.message
             : 'Failed to load Whisper model',
         type: 'MODEL_LOAD_FAILED',
