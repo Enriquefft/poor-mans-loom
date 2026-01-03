@@ -1,3 +1,5 @@
+import { segmentationService } from '../ai/segmentation';
+import type { BackgroundEffect } from '../ai/types';
 import type {
   CameraSettings,
   CameraSize,
@@ -11,6 +13,7 @@ export interface CompositorConfig {
   cameraStream?: MediaStream | null;
   cameraOnlyDimensions?: CanvasDimension;
   cameraSettings?: CameraSettings;
+  backgroundEffect?: BackgroundEffect; // T081: Background effect support
 }
 
 export interface CompositorResult {
@@ -224,6 +227,24 @@ export async function createCompositor(
     size: 'medium',
   };
 
+  // T082: Initialize segmentation if background effect enabled
+  let segmentationEnabled = false;
+  let segmentationCanvas: HTMLCanvasElement | null = null;
+  let frameTimestamp = 0;
+
+  if (config.backgroundEffect?.enabled && cameraVideo) {
+    const initResult = await segmentationService.initialize();
+    if (initResult.success) {
+      segmentationEnabled = true;
+      segmentationCanvas = document.createElement('canvas');
+      console.log(
+        `Background segmentation initialized (GPU: ${initResult.gpuEnabled})`,
+      );
+    } else {
+      console.warn('Segmentation init failed, continuing without effects');
+    }
+  }
+
   let animationFrameId: number;
   let isRunning = true;
 
@@ -234,13 +255,62 @@ export async function createCompositor(
 
     if (config.mode === 'camera-only') {
       // ===== CAMERA-ONLY MODE =====
-      // Draw camera full-screen with horizontal flip (mirror effect)
+      // T083: Apply segmentation if enabled, otherwise draw camera directly
       if (cameraVideo && cameraVideo.readyState >= 2 && !cameraVideo.paused) {
-        ctx.save();
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1); // Horizontal flip
-        ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-        ctx.restore();
+        if (
+          segmentationEnabled &&
+          config.backgroundEffect &&
+          segmentationCanvas
+        ) {
+          // Draw camera to temp canvas first
+          if (!segmentationCanvas.width) {
+            segmentationCanvas.width = canvas.width;
+            segmentationCanvas.height = canvas.height;
+          }
+
+          const tempCtx = segmentationCanvas.getContext('2d', {
+            alpha: false,
+            desynchronized: true,
+          });
+
+          if (tempCtx) {
+            // Draw camera with flip to temp canvas
+            tempCtx.save();
+            tempCtx.translate(segmentationCanvas.width, 0);
+            tempCtx.scale(-1, 1);
+            tempCtx.drawImage(
+              cameraVideo,
+              0,
+              0,
+              segmentationCanvas.width,
+              segmentationCanvas.height,
+            );
+            tempCtx.restore();
+
+            // Process frame with segmentation
+            frameTimestamp += 33; // ~30fps
+            const result = segmentationService.processFrame(
+              segmentationCanvas,
+              config.backgroundEffect,
+              frameTimestamp,
+            );
+
+            // T086: Fallback to no-effect mode if segmentation fails
+            if (result.success && result.outputCanvas) {
+              ctx.drawImage(result.outputCanvas, 0, 0);
+            } else {
+              // Fallback: draw original without effect
+              ctx.drawImage(segmentationCanvas, 0, 0);
+            }
+          }
+        } else {
+          // No segmentation: draw camera directly with flip
+          ctx.save();
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1); // Horizontal flip
+          ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
       }
     } else if (config.mode === 'screen-only') {
       // ===== SCREEN-ONLY MODE =====
@@ -360,6 +430,12 @@ export async function createCompositor(
     cancelAnimationFrame(animationFrameId);
     removeVideoElement(screenVideo);
     removeVideoElement(cameraVideo);
+
+    // T085: Cleanup segmentation resources
+    if (segmentationEnabled) {
+      segmentationService.dispose();
+      segmentationCanvas = null;
+    }
   };
 
   return {
