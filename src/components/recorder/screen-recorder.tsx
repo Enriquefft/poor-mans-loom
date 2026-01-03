@@ -261,13 +261,25 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
       mediaRecorderRef.current &&
       mediaRecorderRef.current.state !== 'inactive'
     ) {
+      console.log('Stopping MediaRecorder...', {
+        state: mediaRecorderRef.current.state,
+        currentChunks: chunksRef.current.length,
+      });
+
+      // Request final data before stopping
+      if (mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.requestData();
+      }
+
       mediaRecorderRef.current.stop();
     }
   }, []);
 
   const startRecording = useCallback(async () => {
     try {
+      // Clear any leftover chunks from previous recordings
       chunksRef.current = [];
+      console.log('Starting new recording - chunks cleared');
 
       // ===== SCREEN CAPTURE (screen-only and screen+camera modes) =====
       let screenResult: Awaited<ReturnType<typeof startScreenCapture>> | null =
@@ -384,8 +396,26 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
 
       recorder.onstop = () => {
         const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        const blob = createVideoBlob(chunksRef.current);
+
+        console.log(
+          `Recording stopped. Duration: ${duration}s, Chunks: ${chunksRef.current.length}`,
+        );
+
+        // Create blob from chunks before cleanup
+        const chunks = [...chunksRef.current]; // Copy chunks array
+        console.log(
+          `Total chunk size: ${chunks.reduce((sum, c) => sum + c.size, 0)} bytes`,
+        );
+
+        const blob = createVideoBlob(chunks);
+        console.log(`Final blob size: ${blob.size} bytes, type: ${blob.type}`);
+
+        // Clear chunks immediately
+        chunksRef.current = [];
+
+        // Cleanup resources
         cleanup();
+
         setRecordingState({
           duration: 0,
           isPaused: false,
@@ -393,6 +423,7 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
           mode: recordingMode,
           startTime: null,
         });
+
         onRecordingComplete(blob, duration);
         toast.success('Recording completed!');
       };
@@ -537,6 +568,15 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
                 </p>
                 <p className="text-neutral-500 font-mono text-xs mt-2">
                   Recording will still work
+                </p>
+              </>
+            ) : recordingMode === 'screen+camera' && cameraEnabled ? (
+              <>
+                <p className="text-neutral-500 font-mono text-sm">
+                  Position your camera overlay
+                </p>
+                <p className="text-neutral-600 font-mono text-xs mt-1">
+                  Drag to move • Hover for controls • Click Record when ready
                 </p>
               </>
             ) : (

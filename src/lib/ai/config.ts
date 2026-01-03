@@ -17,8 +17,7 @@ export const AI_MODELS = {
   MEDIAPIPE_SEGMENTATION: {
     modelPath:
       'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite',
-    wasmPath:
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm',
+    wasmPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm',
   },
   /**
    * Whisper Tiny English Model
