@@ -1,45 +1,75 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useEffect } from "react";
-import { EditorState, ExportOptions, ExportProgress } from "@/lib/types";
-import { 
-  createInitialEditorState, 
-  trimStart, 
-  trimEnd, 
-  splitSegment, 
-  deleteSegment, 
-  restoreSegment,
+import { Download, RotateCcw } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { VideoPlayer } from '@/components/player/video-player';
+import { Button } from '@/components/ui/button';
+import type { SilenceSegment, Transcript } from '@/lib/ai/types';
+import {
+  downloadBlob,
+  exportVideo,
+  getExportFilename,
+} from '@/lib/editor/operations';
+import {
+  createInitialEditorState,
+  deleteSegment,
+  getActiveSegments,
+  getNextSilenceSegment,
+  getPreviousSilenceSegment,
   getTotalActiveDuration,
-  getActiveSegments 
-} from "@/lib/editor/timeline";
-import { exportVideo, downloadBlob, getExportFilename } from "@/lib/editor/operations";
-import { VideoPlayer } from "@/components/player/video-player";
-import { Timeline } from "./timeline";
-import { ExportDialog } from "./export-dialog";
-import { Button } from "@/components/ui/button";
-import { Download, RotateCcw } from "lucide-react";
-import { toast } from "sonner";
+  restoreSegment,
+  splitSegment,
+  trimEnd,
+  trimStart,
+} from '@/lib/editor/timeline';
+import type { EditorState, ExportOptions, ExportProgress } from '@/lib/types';
+import { ExportDialog } from './export-dialog';
+import { SilenceMarkers } from './silence-markers';
+import { Timeline } from './timeline';
+import { TranscriptViewer } from './transcript-viewer';
 
 interface VideoEditorProps {
   videoBlob: Blob;
   videoDuration: number;
   onBack: () => void;
+  transcript?: Transcript | null;
+  onTranscriptUpdate?: (transcript: Transcript) => void;
+  isTranscribing?: boolean;
+  silenceSegments?: SilenceSegment[];
+  onSilenceSegmentsChange?: (segments: SilenceSegment[]) => void;
+  isDetectingSilence?: boolean;
 }
 
-export function VideoEditor({ videoBlob, videoDuration, onBack }: VideoEditorProps) {
+export function VideoEditor({
+  videoBlob,
+  videoDuration,
+  onBack,
+  transcript,
+  onTranscriptUpdate,
+  isTranscribing,
+  silenceSegments = [],
+  onSilenceSegmentsChange,
+  isDetectingSilence = false,
+}: VideoEditorProps) {
   const [videoUrl, setVideoUrl] = useState<string>('');
-  const [editorState, setEditorState] = useState<EditorState>(() => 
-    createInitialEditorState(videoDuration)
-  );
+  const [editorState, setEditorState] = useState<EditorState>(() => ({
+    ...createInitialEditorState(videoDuration),
+    silenceSegments,
+  }));
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
+  const [exportProgress, setExportProgress] = useState<ExportProgress | null>(
+    null,
+  );
 
   // Calculate these early so they can be used in callbacks
   const activeDuration = getTotalActiveDuration(editorState);
-  const hasEdits = activeDuration !== videoDuration || editorState.segments.some(s => s.deleted);
+  const hasEdits =
+    activeDuration !== videoDuration ||
+    editorState.segments.some((s) => s.deleted);
 
   useEffect(() => {
     const url = URL.createObjectURL(videoBlob);
@@ -48,31 +78,34 @@ export function VideoEditor({ videoBlob, videoDuration, onBack }: VideoEditorPro
   }, [videoBlob]);
 
   const handleTrimStart = useCallback((time: number) => {
-    setEditorState(prev => trimStart(prev, time));
+    setEditorState((prev) => trimStart(prev, time));
   }, []);
 
   const handleTrimEnd = useCallback((time: number) => {
-    setEditorState(prev => trimEnd(prev, time));
+    setEditorState((prev) => trimEnd(prev, time));
   }, []);
 
   const handleSplit = useCallback((segmentId: string, time: number) => {
-    setEditorState(prev => splitSegment(prev, segmentId, time));
-    toast.success("Segment split");
+    setEditorState((prev) => splitSegment(prev, segmentId, time));
+    toast.success('Segment split');
   }, []);
 
-  const handleDeleteSegment = useCallback((segmentId: string) => {
-    const activeSegments = getActiveSegments(editorState);
-    if (activeSegments.length <= 1) {
-      toast.error("Cannot delete the last segment");
-      return;
-    }
-    setEditorState(prev => deleteSegment(prev, segmentId));
-    toast.success("Segment deleted");
-  }, [editorState]);
+  const handleDeleteSegment = useCallback(
+    (segmentId: string) => {
+      const activeSegments = getActiveSegments(editorState);
+      if (activeSegments.length <= 1) {
+        toast.error('Cannot delete the last segment');
+        return;
+      }
+      setEditorState((prev) => deleteSegment(prev, segmentId));
+      toast.success('Segment deleted');
+    },
+    [editorState],
+  );
 
   const handleRestoreSegment = useCallback((segmentId: string) => {
-    setEditorState(prev => restoreSegment(prev, segmentId));
-    toast.success("Segment restored");
+    setEditorState((prev) => restoreSegment(prev, segmentId));
+    toast.success('Segment restored');
   }, []);
 
   const handleSeek = useCallback((time: number) => {
@@ -91,57 +124,110 @@ export function VideoEditor({ videoBlob, videoDuration, onBack }: VideoEditorPro
     setEditorState(createInitialEditorState(videoDuration));
     setCurrentTime(0);
     setIsPlaying(false);
-    toast.info("Timeline reset");
+    toast.info('Timeline reset');
   }, [videoDuration]);
 
-  const handleExport = useCallback(async (options: ExportOptions) => {
-    setIsExporting(true);
-    setExportProgress(null);
+  const handleExport = useCallback(
+    async (options: ExportOptions) => {
+      setIsExporting(true);
+      setExportProgress(null);
 
-    // If no edits and WebM format, just download the original
-    if (!hasEdits && options.format === 'webm') {
-      const filename = getExportFilename('webm');
-      downloadBlob(videoBlob, filename);
-      setExportProgress({
-        stage: 'complete',
-        progress: 100,
-        message: 'Download complete!',
-      });
-      toast.success(`Downloaded ${filename}`);
-      setIsExporting(false);
-      return;
-    }
+      // If no edits and WebM format, just download the original
+      if (!hasEdits && options.format === 'webm') {
+        const filename = getExportFilename('webm');
+        downloadBlob(videoBlob, filename);
+        setExportProgress({
+          message: 'Download complete!',
+          progress: 100,
+          stage: 'complete',
+        });
+        toast.success(`Downloaded ${filename}`);
+        setIsExporting(false);
+        return;
+      }
 
-    try {
-      const outputBlob = await exportVideo(
-        videoBlob,
-        editorState,
-        options,
-        setExportProgress
-      );
+      try {
+        const outputBlob = await exportVideo(
+          videoBlob,
+          editorState,
+          options,
+          setExportProgress,
+        );
 
-      const filename = getExportFilename(options.format);
-      downloadBlob(outputBlob, filename);
-      toast.success(`Video exported as ${filename}`);
-    } catch (error) {
-      console.error('Export failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Export failed. Please try again.';
-      setExportProgress({
-        stage: 'error',
-        progress: 0,
-        message: errorMessage,
-      });
-      toast.error("Export failed");
-    } finally {
-      setIsExporting(false);
-    }
-  }, [videoBlob, editorState, hasEdits]);
+        const filename = getExportFilename(options.format);
+        downloadBlob(outputBlob, filename);
+        toast.success(`Video exported as ${filename}`);
+      } catch (error) {
+        console.error('Export failed:', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Export failed. Please try again.';
+        setExportProgress({
+          message: errorMessage,
+          progress: 0,
+          stage: 'error',
+        });
+        toast.error('Export failed');
+      } finally {
+        setIsExporting(false);
+      }
+    },
+    [videoBlob, editorState, hasEdits],
+  );
 
   const handleQuickDownload = useCallback(() => {
     const filename = getExportFilename('webm');
     downloadBlob(videoBlob, filename);
     toast.success(`Downloaded ${filename}`);
   }, [videoBlob]);
+
+  const handleEditorStateChange = useCallback((newState: EditorState) => {
+    setEditorState(newState);
+  }, []);
+
+  // T068: Sync silenceSegments prop updates to editor state
+  useEffect(() => {
+    if (silenceSegments) {
+      setEditorState((prev) => ({
+        ...prev,
+        silenceSegments,
+      }));
+    }
+  }, [silenceSegments]);
+
+  // T069: Keyboard shortcuts for silence navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Alt+N: Next silence segment
+      if (e.altKey && e.key === 'n') {
+        e.preventDefault();
+        const nextSilence = getNextSilenceSegment(editorState, currentTime);
+        if (nextSilence) {
+          setCurrentTime(nextSilence.startTime);
+          toast.info(`Next silence at ${nextSilence.startTime.toFixed(1)}s`);
+        } else {
+          toast.info('No more silence segments ahead');
+        }
+      }
+      // Alt+P: Previous silence segment
+      if (e.altKey && e.key === 'p') {
+        e.preventDefault();
+        const prevSilence = getPreviousSilenceSegment(editorState, currentTime);
+        if (prevSilence) {
+          setCurrentTime(prevSilence.startTime);
+          toast.info(
+            `Previous silence at ${prevSilence.startTime.toFixed(1)}s`,
+          );
+        } else {
+          toast.info('No more silence segments behind');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editorState, currentTime]);
 
   return (
     <div className="w-full space-y-4">
@@ -170,16 +256,46 @@ export function VideoEditor({ videoBlob, videoDuration, onBack }: VideoEditorPro
         />
       </div>
 
+      {/* T068: Silence Markers */}
+      {(silenceSegments && silenceSegments.length > 0) || isDetectingSilence ? (
+        <SilenceMarkers
+          editorState={editorState}
+          onEditorStateChange={handleEditorStateChange}
+          onSeekTo={handleSeek}
+          currentTime={currentTime}
+          isDetecting={isDetectingSilence}
+        />
+      ) : null}
+
+      {/* Transcript Viewer */}
+      {transcript && onTranscriptUpdate && (
+        <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg noise-texture noise-texture-subtle">
+          <TranscriptViewer
+            transcript={transcript}
+            onTranscriptUpdate={onTranscriptUpdate}
+            onSeekTo={handleSeek}
+            currentTime={currentTime}
+          />
+        </div>
+      )}
+
+      {/* Transcription in progress indicator */}
+      {isTranscribing && !transcript && (
+        <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-6 noise-texture noise-texture-subtle">
+          <div className="flex items-center justify-center gap-3 text-sm text-neutral-400">
+            <div className="w-4 h-4 border-2 border-neutral-600 border-t-blue-500 rounded-full animate-spin" />
+            <span className="font-mono">Transcribing audio...</span>
+          </div>
+        </div>
+      )}
+
       {/* Editor info */}
       <div className="flex items-center justify-between text-xs font-mono text-neutral-500">
         <span>
-          Original: {videoDuration.toFixed(1)}s → Edited: {activeDuration.toFixed(1)}s
+          Original: {videoDuration.toFixed(1)}s → Edited:{' '}
+          {activeDuration.toFixed(1)}s
         </span>
-        {hasEdits && (
-          <span className="text-yellow-500">
-            Unsaved changes
-          </span>
-        )}
+        {hasEdits && <span className="text-yellow-500">Unsaved changes</span>}
       </div>
 
       {/* Action buttons */}
@@ -219,4 +335,3 @@ export function VideoEditor({ videoBlob, videoDuration, onBack }: VideoEditorPro
     </div>
   );
 }
-
