@@ -228,6 +228,8 @@ When testing recording features:
 - Tailwind CSS 4.x with @tailwindcss/postcss
 - Radix UI components via Shadcn UI
 - Client-side only (browser localStorage for preferences, in-memory for recordings)
+- TypeScript 5.x (strict mode) with React 19.2 + transformer.js (Whisper model), MediaPipe (segmentation), @xenova/transformers, Web Audio API, Canvas API (001-ai-transformer-features)
+- Browser localStorage for transcripts/captions/silence markers (~10MB limit) (001-ai-transformer-features)
 
 ## Recent Changes
 - 001-react-vite-migration: Migrated from Next.js 16 to Vite 6, upgraded React to 19.2, removed Vercel Analytics, configured COOP/COEP headers for FFmpeg.wasm

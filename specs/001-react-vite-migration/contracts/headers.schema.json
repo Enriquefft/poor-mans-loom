@@ -1,57 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Cross-Origin Headers Contract",
   "description": "Required COOP/COEP headers for FFmpeg.wasm SharedArrayBuffer support",
-  "type": "object",
-  "required": ["headers"],
-  "properties": {
-    "headers": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["source", "headers"],
-        "properties": {
-          "source": {
-            "type": "string",
-            "description": "Path pattern for headers",
-            "examples": ["/*", "/(.*)"]
-          },
-          "headers": {
-            "type": "array",
-            "minItems": 2,
-            "contains": {
-              "allOf": [
-                {
-                  "type": "object",
-                  "required": ["key", "value"],
-                  "properties": {
-                    "key": { "const": "Cross-Origin-Opener-Policy" },
-                    "value": { "const": "same-origin" }
-                  }
-                },
-                {
-                  "type": "object",
-                  "required": ["key", "value"],
-                  "properties": {
-                    "key": { "const": "Cross-Origin-Embedder-Policy" },
-                    "value": { "const": "require-corp" }
-                  }
-                }
-              ]
-            },
-            "description": "Must include both COOP and COEP headers with exact values"
-          }
-        }
-      }
-    }
-  },
   "examples": [
     {
       "comment": "Vercel vercel.json format",
       "headers": [
         {
-          "source": "/(.*)",
           "headers": [
             {
               "key": "Cross-Origin-Opener-Policy",
@@ -61,7 +15,8 @@
               "key": "Cross-Origin-Embedder-Policy",
               "value": "require-corp"
             }
-          ]
+          ],
+          "source": "/(.*)"
         }
       ]
     },
@@ -69,7 +24,6 @@
       "comment": "Netlify _headers format (text file, shown as JSON for schema validation)",
       "headers": [
         {
-          "source": "/*",
           "headers": [
             {
               "key": "Cross-Origin-Opener-Policy",
@@ -79,9 +33,55 @@
               "key": "Cross-Origin-Embedder-Policy",
               "value": "require-corp"
             }
-          ]
+          ],
+          "source": "/*"
         }
       ]
     }
-  ]
+  ],
+  "properties": {
+    "headers": {
+      "items": {
+        "properties": {
+          "headers": {
+            "contains": {
+              "allOf": [
+                {
+                  "properties": {
+                    "key": { "const": "Cross-Origin-Opener-Policy" },
+                    "value": { "const": "same-origin" }
+                  },
+                  "required": ["key", "value"],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "key": { "const": "Cross-Origin-Embedder-Policy" },
+                    "value": { "const": "require-corp" }
+                  },
+                  "required": ["key", "value"],
+                  "type": "object"
+                }
+              ]
+            },
+            "description": "Must include both COOP and COEP headers with exact values",
+            "minItems": 2,
+            "type": "array"
+          },
+          "source": {
+            "description": "Path pattern for headers",
+            "examples": ["/*", "/(.*)"],
+            "type": "string"
+          }
+        },
+        "required": ["source", "headers"],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": ["headers"],
+  "title": "Cross-Origin Headers Contract",
+  "type": "object"
 }
