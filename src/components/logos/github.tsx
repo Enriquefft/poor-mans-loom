@@ -1,13 +1,13 @@
 export function GithubLogo({
   className,
-  variant = "invertocat",
+  variant = 'invertocat',
 }: {
   className?: string;
-  variant?: "invertocat" | "wordmark" | "lockup";
+  variant?: 'invertocat' | 'wordmark' | 'lockup';
 }) {
-  const fillColor = "currentColor";
+  const fillColor = 'currentColor';
 
-  if (variant === "invertocat") {
+  if (variant === 'invertocat') {
     return (
       <svg
         role="img"
@@ -29,7 +29,7 @@ export function GithubLogo({
     );
   }
 
-  if (variant === "wordmark") {
+  if (variant === 'wordmark') {
     return (
       <svg
         role="img"
@@ -62,7 +62,7 @@ export function GithubLogo({
     );
   }
 
-  if (variant === "lockup") {
+  if (variant === 'lockup') {
     return (
       <svg
         role="img"

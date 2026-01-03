@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useRef, useEffect, useCallback, useState } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+import { Maximize2, Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 
 interface VideoPlayerProps {
   src: string;
@@ -38,8 +38,10 @@ export function VideoPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
 
-  const isPlaying = externalIsPlaying !== undefined ? externalIsPlaying : internalIsPlaying;
-  const currentTime = externalTime !== undefined ? externalTime : internalCurrentTime;
+  const isPlaying =
+    externalIsPlaying !== undefined ? externalIsPlaying : internalIsPlaying;
+  const currentTime =
+    externalTime !== undefined ? externalTime : internalCurrentTime;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -76,7 +78,7 @@ export function VideoPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video || externalTime === undefined) return;
-    
+
     if (Math.abs(video.currentTime - externalTime) > 0.5) {
       video.currentTime = externalTime;
     }
@@ -105,20 +107,23 @@ export function VideoPlayer({
     onPlayPause?.(newState);
   }, [isPlaying, onPlayPause]);
 
-  const handleSeek = useCallback((value: number[]) => {
-    const video = videoRef.current;
-    if (!video) return;
-    
-    const newTime = value[0];
-    video.currentTime = newTime;
-    setInternalCurrentTime(newTime);
-    onTimeUpdate?.(newTime);
-  }, [onTimeUpdate]);
+  const handleSeek = useCallback(
+    (value: number[]) => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      const newTime = value[0];
+      video.currentTime = newTime;
+      setInternalCurrentTime(newTime);
+      onTimeUpdate?.(newTime);
+    },
+    [onTimeUpdate],
+  );
 
   const handleVolumeChange = useCallback((value: number[]) => {
     const video = videoRef.current;
     if (!video) return;
-    
+
     const newVolume = value[0];
     video.volume = newVolume;
     setVolume(newVolume);
@@ -128,7 +133,7 @@ export function VideoPlayer({
   const toggleMute = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
-    
+
     if (isMuted) {
       video.volume = volume || 0.5;
       setIsMuted(false);
@@ -141,7 +146,7 @@ export function VideoPlayer({
   const toggleFullscreen = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
-    
+
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
@@ -152,13 +157,16 @@ export function VideoPlayer({
   if (!src) {
     return (
       <div className="relative w-full aspect-video bg-black flex items-center justify-center">
-        <span className="text-neutral-500 font-mono text-sm">No video loaded</span>
+        <span className="text-neutral-500 font-mono text-sm">
+          No video loaded
+        </span>
       </div>
     );
   }
 
   return (
-    <div
+    <section
+      aria-label="Video player"
       className="relative w-full aspect-video bg-black group"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -168,13 +176,16 @@ export function VideoPlayer({
         src={src}
         className="w-full h-full object-contain"
         onClick={togglePlay}
+        aria-label="Video playback"
       />
 
       {/* Play button overlay */}
       {!isPlaying && (
         <button
+          type="button"
           onClick={togglePlay}
           className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Play video"
         >
           <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
             <Play className="w-8 h-8 text-black ml-1" />
@@ -260,7 +271,6 @@ export function VideoPlayer({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
-
