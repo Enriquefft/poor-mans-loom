@@ -124,12 +124,12 @@
 .noise-overlay {
   position: fixed;
   inset: 0;
-  background-image: url('/noise.png');
-  background-repeat: repeat;
-  opacity: 0.035;
-  pointer-events: none;
   z-index: 100;
+  pointer-events: none;
+  background-image: url("/noise.png");
+  background-repeat: repeat;
   mix-blend-mode: overlay;
+  opacity: 0.035;
 }
 
 .noise-texture {
@@ -137,15 +137,15 @@
 }
 
 .noise-texture::before {
-  content: '';
   position: absolute;
   inset: 0;
-  background-image: url('/noise.png');
-  background-repeat: repeat;
-  opacity: 0.03;
-  pointer-events: none;
-  mix-blend-mode: overlay;
   z-index: 1;
+  pointer-events: none;
+  content: "";
+  background-image: url("/noise.png");
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
+  opacity: 0.03;
 }
 
 .noise-texture-subtle::before {
