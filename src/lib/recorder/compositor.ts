@@ -21,6 +21,7 @@ export interface CompositorResult {
   canvasStream: MediaStream;
   updateCameraSettings: (settings: Partial<CameraSettings>) => void;
   cleanup: () => void;
+  getCurrentFPS: () => number; // T101: FPS monitoring
 }
 
 function getCameraDrawPosition(
@@ -248,8 +249,32 @@ export async function createCompositor(
   let animationFrameId: number;
   let isRunning = true;
 
+  // T101: FPS monitoring
+  let lastFrameTime = performance.now();
+  let frameCount = 0;
+  let fps = 30;
+  let fpsUpdateTime = performance.now();
+
   const drawFrame = () => {
     if (!isRunning) return;
+
+    // T101: Calculate FPS
+    const now = performance.now();
+    frameCount++;
+
+    // Update FPS every second
+    if (now - fpsUpdateTime >= 1000) {
+      fps = Math.round((frameCount * 1000) / (now - fpsUpdateTime));
+      frameCount = 0;
+      fpsUpdateTime = now;
+
+      // T102: Warn if FPS drops below 25
+      if (segmentationEnabled && fps < 25) {
+        console.warn(`Low FPS detected: ${fps} fps (background effects active)`);
+      }
+    }
+
+    lastFrameTime = now;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -438,10 +463,14 @@ export async function createCompositor(
     }
   };
 
+  // T101: Expose FPS getter
+  const getCurrentFPS = () => fps;
+
   return {
     canvas,
     canvasStream,
     cleanup,
+    getCurrentFPS,
     updateCameraSettings,
   };
 }

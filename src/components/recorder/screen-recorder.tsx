@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import type { BackgroundEffect } from '@/lib/ai/types';
 import {
   createAudioMixer,
   getMicrophoneStream,
@@ -24,6 +25,7 @@ import type {
 } from '@/lib/types';
 import { CANVAS_PRESETS } from '@/lib/types';
 import { AudioControls } from './audio-controls';
+import { BackgroundControls } from './background-controls';
 import { CameraOverlay } from './camera-overlay';
 import { DimensionSelector } from './dimension-selector';
 import { ModeSelector } from './mode-selector';
@@ -42,6 +44,12 @@ const DEFAULT_CAMERA_SETTINGS: CameraSettings = {
 const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   microphoneEnabled: true,
   systemAudioEnabled: true,
+};
+
+const DEFAULT_BACKGROUND_EFFECT: BackgroundEffect = {
+  enabled: false,
+  type: 'blur',
+  blurIntensity: 50,
 };
 
 export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
@@ -70,6 +78,9 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
   );
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(
     DEFAULT_AUDIO_SETTINGS,
+  );
+  const [backgroundEffect, setBackgroundEffect] = useState<BackgroundEffect>(
+    DEFAULT_BACKGROUND_EFFECT,
   );
   const [cameraEnabled, setCameraEnabled] = useState(true);
 
@@ -227,6 +238,7 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
       let compositor;
       try {
         compositor = await createCompositor({
+          backgroundEffect, // T097: Pass background effect to compositor
           cameraOnlyDimensions:
             recordingMode === 'camera-only' ? cameraOnlyDimensions : undefined,
           cameraSettings,
@@ -448,6 +460,18 @@ export function ScreenRecorder({ onRecordingComplete }: ScreenRecorderProps) {
             disabled={recordingState.isRecording}
           />
         </div>
+
+        {/* T097: Background controls (camera-only or screen+camera with camera) */}
+        {(recordingMode === 'camera-only' ||
+          (recordingMode === 'screen+camera' && cameraEnabled)) && (
+          <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 noise-texture noise-texture-subtle">
+            <BackgroundControls
+              effect={backgroundEffect}
+              onEffectChange={setBackgroundEffect}
+              disabled={recordingState.isRecording}
+            />
+          </div>
+        )}
 
         {/* Recording controls */}
         <RecordingControls
